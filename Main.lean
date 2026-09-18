@@ -24,6 +24,7 @@ def send (repo : String) (id : String) (actor : Actor) (command : Axiward.Comman
 def usage : String := "axiward init <absolute-bare-repo> <trusted-policy-dir> <lean-toolchain>\n\
   axiward session <repo> <new-worker-view> <python.exe> <adapter/server.py>\n\
   axiward overview <repo> | navigate <repo>\n\
+  axiward worker-status <repo> <worker-id>\n\
   axiward next <repo> <request-id> <worker-id> <view> [node action]\n\
   axiward search <repo> <worker-id> <node> <serial> <query>\n\
   axiward view-add <repo> <worker-id> <view> <node> <serial> <resource-id>\n\
@@ -93,6 +94,11 @@ def main (args : List String) : IO UInt32 := do
     | ["revise-preview", repo, id, policy] => emit (← Controller.revision repo id policy)
     | ["revise", repo, id, policy, base] => emit (← Controller.revision repo id policy (some base))
     | ["overview", repo] => emit (Interface.status (← Git.load repo))
+    | ["worker-status", repo, owner] =>
+      let loaded ← Git.load repo
+      emit (Json.mkObj [("status", Interface.status loaded),
+        ("navigation", Interface.navigation loaded.state),
+        ("inbox", Interface.inbox loaded.state owner)])
     | ["session", repo, view, python, adapter] => emit (← Interface.session repo view python adapter)
     | ["package-info", repo, owner, node, serial] =>
       emit (← Interface.packageInfo repo owner (← serialOf node) (← serialOf serial))

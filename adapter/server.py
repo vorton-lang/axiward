@@ -174,9 +174,7 @@ class Adapter:
     def call(self, name, data, call_id):
         self.validate(name, data)
         if name == "status":
-            return {"status": self.cli("overview", self.repo),
-                    "navigation": self.cli("navigate", self.repo),
-                    "inbox": self.cli("inbox", self.repo, self.worker)}
+            return self.cli("worker-status", self.repo, self.worker)
         if name == "next":
             if ("node" in data) != ("action" in data):
                 raise ValueError("node and action must be provided together")
