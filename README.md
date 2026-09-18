@@ -13,6 +13,7 @@ R0 支持 Windows + Codex，覆盖执行、精化、探索、用户决定四条�
 R0 已通过固定范围的工程验收；真实 agent 持续推进、导航效果和用户最终验收仍待完成。
 
 - [完整路线图与当前进度](docs/roadmap.md)
+- [0.2 权限版本交付说明](docs/releases/0.2.0.md)
 - [本轮权限实现与验收](experiments/isolation/README.md)
 - [早期 R0 交付记录](docs/releases/0.1.0.md)
 - [开始使用、四类流程与恢复方法](docs/product-guide.md)
