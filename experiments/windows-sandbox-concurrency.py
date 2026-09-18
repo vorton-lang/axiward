@@ -121,6 +121,8 @@ def dacl(path):
 
 
 def main():
+    started = time.monotonic()
+    deadline = started + 27
     parser = argparse.ArgumentParser()
     parser.add_argument("--child", action="store_true")
     parser.add_argument("--production-toolchain", type=Path)
@@ -183,8 +185,11 @@ def main():
         before = capability_state()
         start = time.monotonic()
         working = Path(__file__).resolve().parent.parent if args.production_toolchain else snapshot
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("sandbox probe exceeded its 27-second budget")
         process = subprocess.run(command, cwd=working, env=env, capture_output=True, text=True,
-                                 encoding="utf-8", timeout=90, creationflags=subprocess.CREATE_NO_WINDOW)
+                                 encoding="utf-8", timeout=remaining, creationflags=subprocess.CREATE_NO_WINDOW)
         stdout, stderr = process.stdout, process.stderr
         record = {"command": command, "exitCode": process.returncode,
                   "seconds": round(time.monotonic() - start, 3),
@@ -221,7 +226,8 @@ def main():
         mismatches = [{"case": name, "iteration": index, "observed": observed}
                       for name, case in cases.items() for index, observed in enumerate(case["probe"]["iterations"])
                       if {key: value["allowed"] for key, value in observed.items()} != expected]
-        summary = {"overlapSeconds": round(overlap / 1e9, 3), "mismatches": mismatches,
+        summary = {"seconds": round(time.monotonic() - started, 3),
+                   "overlapSeconds": round(overlap / 1e9, 3), "mismatches": mismatches,
                    "cases": len(cases), "iterationsPerCase": 10}
         (output / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(summary, ensure_ascii=False), flush=True)
@@ -249,6 +255,7 @@ def main():
             cases["repeat-" + name] = future.result()
             print("repeat-" + name, cases["repeat-" + name].get("probe", {}).get("operations", {}), flush=True)
     (output / "results.json").write_text(json.dumps(cases, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"seconds": round(time.monotonic() - started, 3), "cases": len(cases)}), flush=True)
 
 
 if __name__ == "__main__":

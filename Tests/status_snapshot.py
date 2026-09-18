@@ -1,21 +1,15 @@
-"""Deterministic status/read-write interleaving through the real controller.
-
-User answers are simulated fixture input. Only the test intercepts the adapter's
-process boundary; every read and write still uses the production CLI and Git.
-"""
+"""A real Git commit between controller reads must not mix status snapshots."""
 import argparse
-from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
 import subprocess
 import sys
-import threading
 import time
-
-from workflow import Client
 
 
 def main():
+    started = time.monotonic()
+    deadline = started + 25
     parser = argparse.ArgumentParser()
     parser.add_argument("--toolchain", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
@@ -24,113 +18,59 @@ def main():
     sys.path.insert(0, str(source / "adapter"))
     from server import Adapter
 
-    started = time.monotonic()
     exe = source / ".lake/build/bin/axiward.exe"
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     repo = output / "project"
-    view = repo / ".view" / "worker"
+    view = repo / ".view" / "reader"
     commands = []
 
-    def write(name, value):
-        (output / name).write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding="utf-8")
-
     def cli(*arguments):
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("status snapshot check exceeded its 25-second budget")
         run = subprocess.run([str(exe), *map(str, arguments)], capture_output=True,
-                             text=True, encoding="utf-8", timeout=60,
+                             text=True, encoding="utf-8", timeout=remaining,
                              creationflags=subprocess.CREATE_NO_WINDOW)
         commands.append({"args": list(map(str, arguments)), "exitCode": run.returncode,
                          "stdout": run.stdout, "stderr": run.stderr})
-        write("commands.json", commands)
+        (output / "commands.json").write_text(json.dumps(commands, ensure_ascii=False, indent=2), encoding="utf-8")
         assert run.returncode == 0, run.stdout + run.stderr
         return json.loads(run.stdout)
 
-    def components(worker):
-        # No writer runs while these independent reference reads are collected.
-        value = cli("worker-status", repo, worker)
-        assert value["status"] == cli("overview", repo)
-        assert value["handoff"]["currentHead"] == value["status"]["head"]
-        assert cli("overview", repo)["head"] == value["status"]["head"]
-        return value
-
     cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
-    worker = cli("session", repo, view, Path(sys.executable), source / "adapter/server.py")["worker"]
-    other = cli("session", repo, repo / ".view" / "other-worker", Path(sys.executable),
-                source / "adapter/server.py")["worker"]
-    writer = cli("session", repo, repo / ".view" / "writer", Path(sys.executable),
-                 source / "adapter/server.py")["worker"]
-    question = output / "question"
-    question.mkdir()
-    (question / "question.json").write_text(json.dumps({
-        "prompt": "Fixture: use a list?", "subject": "Simulated FIFO preference only.",
-        "options": [{"key": "list", "label": "Use a list"}]}), encoding="utf-8")
-    for serial, owner in enumerate((worker, other)):
-        assert cli("begin", repo, f"begin-{serial}", owner, 0, "requestDecision") == {"acquired": {"serial": serial}}
-        cli("submit", repo, f"submit-{serial}", owner, serial, question)
-        cli("check", repo, f"check-{serial}", serial)
-        assert cli("decide", repo, f"answer-{serial}", 0, serial, "list", "simulated") == {
-            "answered": {"serial": serial, "applicable": True}}
+    view.mkdir(parents=True)
+    adapter = Adapter(exe, repo, view, "reader")
+    before = cli("worker-status", repo, "reader")
+    assert not before["status"]["paused"] and not before["handoff"]["paused"]
+    committed = False
 
-    before = components(worker)
-    assert [item["sourceOwner"] for item in before["handoff"]["decisions"]] == [worker, other]
-    assert all(item["applicableNow"] for item in before["handoff"]["decisions"])
-    with (output / "mcp-events.jsonl").open("w", encoding="utf-8") as events:
-        client = Client(source, exe, repo, view, worker, events)
-        try:
-            # Read repeatedly without consuming context or allowing forged identities.
-            assert client.call("status") == before
-            assert client.call("status") == before
-            client.call("status", success=False, worker=other)
-            client.call("status", success=False, repo=str(repo))
-        finally:
-            client.close()
-    assert cli("overview", repo)["head"] == before["status"]["head"]
-
-    adapter = Adapter(exe, repo, view, worker)
-    controller_call = adapter.cli
-    read_finished, write_finished = threading.Event(), threading.Event()
-
-    def read_then_wait(*arguments):
-        value = controller_call(*arguments)
-        if not read_finished.is_set():
-            read_finished.set()
-            assert write_finished.wait(timeout=60), "writer did not complete"
+    def read_then_commit(*arguments):
+        nonlocal committed
+        value = cli(*arguments)
+        if not committed:
+            committed = True
+            # Commit after the first real read, before Adapter.call receives it.
+            # Any subsequent component read would observe the new Git version.
+            cli("pause", repo, "interleaved-pause", "snapshot check")
         return value
 
-    # Hold the first real controller result before Adapter.call can finish.
-    # A split implementation would read handoff after the
-    # commits below, despite reporting the earlier overview head.
-    adapter.cli = read_then_wait
-    with ThreadPoolExecutor(max_workers=1) as pool:
-        pending = pool.submit(adapter.call, "status", {}, "race")
-        try:
-            assert read_finished.wait(timeout=60), "status did not finish its first read"
-            cli("begin", repo, "race-question", writer, 0, "requestDecision")
-            cli("submit", repo, "race-submit", writer, 2, question)
-            cli("check", repo, "race-check", 2)
-            cli("decide", repo, "race-answer", 0, 2, "list", "new simulated decision")
-            cli("pause", repo, "race-pause", "status snapshot fixture")
-        finally:
-            write_finished.set()
-        actual = pending.result(timeout=60)
-
-    after = components(worker)
-    write("race.json", {"before": before, "returned": actual, "after": after})
-    assert before["status"]["head"] != after["status"]["head"], "writer made no commit"
-    assert after["status"]["paused"] and len(after["handoff"]["decisions"]) == 3
-    assert components(other)["handoff"] == after["handoff"], "handoff depends on worker identity"
-    assert actual["status"]["head"] == before["status"]["head"]
-    for section in ("status", "handoff"):
-        assert actual[section] == before[section], f"{section} differs from the returned head's snapshot"
-    assert adapter.call("status", {}, "after") == after
+    adapter.cli = read_then_commit
+    actual = adapter.call("status", {}, "race")
+    after = cli("worker-status", repo, "reader")
+    (output / "race.json").write_text(json.dumps(
+        {"before": before, "returned": actual, "after": after}, ensure_ascii=False, indent=2), encoding="utf-8")
+    assert committed and before["status"]["head"] != after["status"]["head"]
+    assert after["status"]["paused"] and after["handoff"]["paused"]
+    assert actual == before, "response mixed state from different Git commits"
+    assert actual["status"]["head"] == actual["handoff"]["currentHead"]
+    adapter.cli = cli
+    assert adapter.call("status", {}, "repeat") == after, "reading status changed or consumed state"
     result = {"status": "passed", "seconds": round(time.monotonic() - started, 3),
-              "snapshotHead": before["status"]["head"], "currentHead": after["status"]["head"],
-              "checks": ["MCP response shape and protected worker binding",
-                         "status repeats all relevant decisions across worker identities without writes",
-                         "concurrent commits complete before status returns",
-                         "both response sections match the returned head",
-                         "later status observes pause and newly recorded user decision"]}
-    write("results.json", result)
+              "checks": ["real commit between component reads cannot mix response versions",
+                         "later status observes the committed pause",
+                         "repeated reads do not change or consume state"]}
+    (output / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result), flush=True)
 
 

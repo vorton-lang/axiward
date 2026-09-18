@@ -9,6 +9,7 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 import tomllib
 from pathlib import Path
 
@@ -20,6 +21,15 @@ def toml(value):
 
 
 def main():
+    started = time.monotonic()
+    deadline = started + 27
+
+    def remaining():
+        seconds = deadline - time.monotonic()
+        if seconds <= 0:
+            raise TimeoutError("native protocol check exceeded its 27-second budget")
+        return seconds
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--toolchain", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
@@ -33,7 +43,7 @@ def main():
 
     def cli(*args):
         run = subprocess.run([str(exe), *map(str, args)], capture_output=True, text=True,
-                             encoding="utf-8", timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
+                             encoding="utf-8", timeout=remaining(), creationflags=subprocess.CREATE_NO_WINDOW)
         assert run.returncode == 0, run.stdout + run.stderr
         return json.loads(run.stdout)
 
@@ -70,7 +80,7 @@ def main():
 
     def response(number):
         while True:
-            item = messages.get(timeout=90)
+            item = messages.get(timeout=remaining())
             assert item is not None, "native server exited"
             events.write(json.dumps(item, ensure_ascii=False) + "\n")
             events.flush()
@@ -125,17 +135,19 @@ def main():
         result = {"status": "passed", "nativeThread": thread, "modelTurns": 0,
                   "workerMode": "user-approved full access; workspace rules are instructions",
                   "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "repeatable complete handoff"]}
-        (root / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
-        print(json.dumps(result), flush=True)
     finally:
         native.stdin.close()
         try:
-            native.wait(timeout=5)
+            native.wait(timeout=1)
         except subprocess.TimeoutExpired:
             native.terminate()
-            native.wait(timeout=5)
+            native.wait(timeout=1)
         events.close()
         errors.close()
+    result["seconds"] = round(time.monotonic() - started, 3)
+    assert result["seconds"] < 30, "native protocol check exceeded 30 seconds"
+    (root / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    print(json.dumps(result), flush=True)
 
 
 if __name__ == "__main__":
