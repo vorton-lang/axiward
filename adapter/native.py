@@ -45,7 +45,7 @@ def execute(command, cwd: Path, evidence: Path):
 
         try:
             send({"id": 1, "method": "initialize", "params": {
-                "clientInfo": {"name": "axiward", "version": "0.1.0"},
+                "clientInfo": {"name": "axiward", "version": "0.2.0"},
                 "capabilities": {"experimentalApi": True}}})
             while True:
                 item = receive()

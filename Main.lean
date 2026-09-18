@@ -128,7 +128,7 @@ def main (args : List String) : IO UInt32 := do
     | ["reconcile", repo, id, node, operation, reason] =>
       emit (toJson (← FlowIO.reconcile repo id (← serialOf node) operation reason))
     | ["deliver", repo, directory] => emit (← Interface.delivery repo directory)
-    | ["--version"] => IO.println "Axiward 0.1.0 (R0; Lean 4.34.0; Windows; FIFO verifier)"
+    | ["--version"] => IO.println "Axiward 0.2.0 (R0; Lean 4.34.0; Windows; FIFO verifier)"
     | ["--help"] | [] => IO.println usage
     | _ => throw (IO.userError usage)
     return 0

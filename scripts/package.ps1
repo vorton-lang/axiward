@@ -40,7 +40,7 @@ try {
             sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
         }
     }
-    [ordered]@{ version = '0.1.0'; platform = 'windows-x64'; lean = '4.34.0'; files = @($manifest) } |
+    [ordered]@{ version = '0.2.0'; platform = 'windows-x64'; lean = '4.34.0'; files = @($manifest) } |
         ConvertTo-Json -Depth 5 | Set-Content -LiteralPath (Join-Path $outputRoot 'manifest.json') -Encoding utf8NoBOM
     & (Join-Path $outputRoot 'axiward.exe') --version
     if ($LASTEXITCODE -ne 0) { throw 'Packaged executable cannot start.' }

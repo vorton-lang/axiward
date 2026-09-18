@@ -233,7 +233,7 @@ def main():
                                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                                     encoding="utf-8", creationflags=subprocess.CREATE_NO_WINDOW)
         deadline = time.monotonic() + 60
-        while not list((faults / "axiward-work").glob("run-*/input.json")):
+        while not list(Path(str(faults) + ".checks").glob("run-*/input.json")):
             assert checking.poll() is None and time.monotonic() < deadline, "verifier did not start"
             time.sleep(0.05)
         cli("cancel", faults, "late-cancel", "worker", 0, "cancel while proof runs")

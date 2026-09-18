@@ -315,6 +315,7 @@ def session (repo view python adapter : FilePath) : IO Json := do
     if viewText == text || viewText.startsWith (text ++ "/") || text.startsWith (viewText ++ "/") then
       throw (IO.userError "worker view must be separate from protected controller and checker directories")
   let worker ← Git.hashText repo s!"{view}\n{← IO.monoNanosNow}"
+  let profileName := "axiward_" ++ String.ofList (worker.toList.take 16)
   IO.FS.createDirAll (view / ".codex")
   IO.FS.createDirAll (view / "work")
   IO.FS.createDirAll (view / "tmp")
@@ -331,17 +332,27 @@ def session (repo view python adapter : FilePath) : IO Json := do
   let mut otherServers := ""
   for service in services do
     let name ← Git.decode (service.getObjValAs? String "name")
-    if name != "axiward" then otherServers := otherServers ++
-      s!"\n[mcp_servers.{Sandbox.quote name}]\nenabled = false\n"
-  let config := "# Axiward: this worker must use the named native profile.\ndefault_permissions = \"axiward_worker\"\napproval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }\n\n" ++
+    if name != "axiward" then
+      let transport ← Git.decode (service.getObjVal? "transport")
+      let kind ← Git.decode (transport.getObjValAs? String "type")
+      -- Some native defaults are not backed by a user-config transport table.
+      -- A complete inert definition avoids inheriting a privileged transport or
+      -- writing its credentials into the readable project configuration.
+      let disabled := if kind == "stdio" then
+          s!"command = {Sandbox.quote exe.toString}\nargs = [\"--version\"]\n"
+        else "url = \"https://disabled.invalid\"\n"
+      otherServers := otherServers ++
+        s!"\n[mcp_servers.{Sandbox.quote name}]\nenabled = false\n" ++ disabled
+  let config := "# Axiward: this worker must use the named native profile.\ndefault_permissions = " ++ Sandbox.quote profileName ++
+    "\napproval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }\n\n" ++
     "[windows]\nsandbox = \"elevated\"\n\n[features]\napps = false\nplugins = false\nhooks = false\nbrowser_use = false\ncomputer_use = false\n\n" ++
-    "[permissions.axiward_worker]\nfilesystem = { " ++ String.intercalate ", " rules ++
+    "[permissions." ++ profileName ++ "]\ndescription = \"Axiward project worker\"\nfilesystem = { " ++ String.intercalate ", " rules ++
     " }\nnetwork = { enabled = true }\n\n[shell_environment_policy.set]\n" ++
     "TMP = " ++ Sandbox.quote (view / "tmp").toString ++ "\nTEMP = " ++ Sandbox.quote (view / "tmp").toString ++ "\n\n" ++
     s!"[mcp_servers.axiward]\ncommand = {(toJson python.toString).compress}\nargs = {(toJson argv).compress}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n" ++ otherServers
   IO.FS.writeFile (view / ".codex" / "config.toml") config
   IO.FS.writeFile (view / "AGENTS.md")
-    "# Axiward worker\n\nUse the Axiward MCP tools for project state. Start with status and next, then read the assigned ACTION.md. Editable package files live under work/packages/; temporary external research files belong in tmp/. The native axiward_worker profile denies direct access to the canonical repository and protected controller. The thin adapter provides only permitted views and operations. Do not change permissions or invoke admin commands. External research remains available through native shell/network/web search; unrelated privileged MCP/browser/computer surfaces are disabled for this view.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read answer, acknowledge. After an ended package call next. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one native task per view. Separate tasks use separate views/worker identities against the same managed repository. Never self-approve user questions. Completion requires status.complete=true.\n"
+    "# Axiward worker\n\nUse the Axiward MCP tools for project state. Start with status and next, then read the assigned ACTION.md. Editable package files live under work/packages/; temporary external research files belong in tmp/. This view's unique native Axiward profile denies direct access to the canonical repository and protected controller. The thin adapter provides only permitted views and operations. Do not change permissions or invoke admin commands. External research remains available through native shell/network/web search; unrelated privileged MCP/browser/computer surfaces are disabled for this view.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read answer, acknowledge. After an ended package call next. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one native task per view. Separate tasks use separate views/worker identities against the same managed repository. Never self-approve user questions. Completion requires status.complete=true.\n"
   IO.FS.writeFile (view / "START.md")
     "# Start here\n\nOpen this directory as a trusted Codex project. Confirm the Axiward MCP tools are available. Ask the agent: ‘Use Axiward to advance this project; follow next, ask me when a registered decision needs an answer, and continue until complete.’\n\nOnly this project uses the generated configuration. Restart the task after setup. Reopen the same view to resume; packages never expire.\n"
   return Json.mkObj [("view", toJson view.toString), ("worker", toJson worker),

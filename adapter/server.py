@@ -12,6 +12,7 @@ import re
 import stat
 import subprocess
 import sys
+import tomllib
 import uuid
 from pathlib import Path
 
@@ -56,6 +57,19 @@ class Adapter:
             raise ValueError("canonical repository must be outside the worker view")
         if self.view.is_relative_to(self.repo):
             raise ValueError("worker view must not be inside the canonical repository")
+        config = tomllib.loads((self.view / ".codex/config.toml").read_text(encoding="utf-8"))
+        profile_name = "axiward_" + worker[:16]
+        if config.get("default_permissions") != profile_name or "sandbox_mode" in config:
+            raise ValueError("this adapter requires its generated native Axiward profile; legacy full-access views are refused")
+        profile = config.get("permissions", {}).get(profile_name, {})
+        filesystem = profile.get("filesystem", {})
+        paths = {Path(key).resolve(): value for key, value in filesystem.items() if not key.startswith(":")}
+        expected = {self.repo: "deny", Path(str(self.repo) + ".checks"): "deny", self.exe.parent: "deny",
+                    Path(__file__).resolve().parent: "deny", self.view: "read", self.view / "work": "write", self.view / "tmp": "write"}
+        if paths != expected or filesystem.get(":root") != "read" or "extends" in profile:
+            raise ValueError("native profile does not protect this repository, controller and view")
+        if any(item.get("enabled", True) for name, item in config.get("mcp_servers", {}).items() if name != "axiward"):
+            raise ValueError("unreviewed privileged MCP transport in worker configuration")
         self.pending = {}
         self.elicitation = False
         self.audit = self.repo / "axiward-transport" / (uuid.uuid4().hex + ".jsonl")
@@ -286,7 +300,7 @@ def main():
                 adapter.elicitation = "elicitation" in request["params"].get("capabilities", {})
                 emit({"jsonrpc": "2.0", "id": request["id"], "result": {
                     "protocolVersion": request["params"]["protocolVersion"], "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "axiward", "version": "0.1.0"}}})
+                    "serverInfo": {"name": "axiward", "version": "0.2.0"}}})
             elif method == "tools/list":
                 emit({"jsonrpc": "2.0", "id": request["id"], "result": {"tools": [
                     {"name": name, "description": description, "inputSchema": spec}

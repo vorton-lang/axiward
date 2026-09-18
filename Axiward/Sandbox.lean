@@ -27,7 +27,7 @@ def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
   IO.FS.createDirAll (snapshot / ".tmp")
   unless ← (snapshot / "lake-manifest.json").pathExists do
     IO.FS.writeFile (snapshot / "lake-manifest.json")
-      "{\"version\":\"1.2.0\",\"packagesDir\":\".lake/packages\",\"packages\":[],\"name\":\"axiward-verified\",\"lakeDir\":\".lake\"}"
+      "{\"version\":\"1.2.0\",\"packagesDir\":\".lake/packages\",\"packages\":[],\"name\":\"axiward\",\"lakeDir\":\".lake\"}"
   unless ← (snapshot / "audit.json").pathExists do IO.FS.writeFile (snapshot / "audit.json") ""
   let rules := ["\":root\" = \"read\"", pathRule repo "deny", pathRule snapshot "read",
     pathRule (snapshot / ".lake") "write", pathRule (snapshot / ".tmp") "write",
