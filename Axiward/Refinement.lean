@@ -188,6 +188,6 @@ def check (repo : FilePath) (scope : Scope) (candidate : Candidate) (state : Sta
     let mut logs : Array Git.Blob := #[⟨"error.json", errorBlob⟩]
     for name in #["input.json", "01-build.json", "02-audit.json", "03-replay.json"] do
       if ← (work / name).pathExists then logs := logs.push ⟨name, ← Git.hashFile repo (work / name)⟩
-    return ⟨.unknown "refinement checker could not complete; see evidence", ← Git.tree repo none logs⟩
+    return ⟨.unknown s!"refinement checker could not complete: {error}; see evidence", ← Git.tree repo none logs⟩
 
 end Axiward.Refinement

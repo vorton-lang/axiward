@@ -6,6 +6,16 @@ open Lean System
 
 def quote (value : String) : String := (toJson value).compress
 
+private def codexStartError (error : IO.Error) : IO.Error :=
+  IO.userError s!"Cannot start Codex CLI (codex) from this process. Run codex --version in the same terminal and add the directory containing codex.exe to this session's PATH. Original error: {error}"
+
+/-- Availability only: this does not start a sandbox, model turn or verifier. -/
+def requireCodex : IO Unit := do
+  let result ← try IO.Process.output { cmd := "codex", args := #["--version"] }
+    catch error => throw (codexStartError error)
+  unless result.exitCode == 0 do
+    throw (IO.userError s!"Codex CLI preflight failed (exit {result.exitCode}): {result.stdout}{result.stderr}")
+
 def pathRule (path : FilePath) (access : String) : String :=
   quote (path.normalize.toString.replace "\\" "/") ++ " = " ++ quote access
 
@@ -25,6 +35,7 @@ private def powershellLiteral (value : String) : String :=
 /-- Codex shares SID registration across projects in one user environment.
     Hold this gate until its restricted child has started, not until work ends. -/
 private def nativeOutput (args : IO.Process.SpawnArgs) : IO IO.Process.Output := do
+  requireCodex
   let codexHome ← match ← IO.getEnv "CODEX_HOME" with
     | some value => pure (FilePath.mk value)
     | none => do
@@ -36,7 +47,8 @@ private def nativeOutput (args : IO.Process.SpawnArgs) : IO IO.Process.Output :=
   let gate ← IO.FS.Handle.mk (codexHome / "axiward-sandbox-start.lock") .append
   gate.lock
   let (child, stderr) ← try
-      let child ← IO.Process.spawn { args with stdin := .null, stdout := .piped, stderr := .piped }
+      let child ← try IO.Process.spawn { args with stdin := .null, stdout := .piped, stderr := .piped }
+        catch error => throw (codexStartError error)
       let stderr ← IO.asTask child.stderr.readToEnd Task.Priority.dedicated
       let first ← child.stdout.getLine
       unless first.trimAscii.toString == "AXIWARD_SANDBOX_STARTED" do

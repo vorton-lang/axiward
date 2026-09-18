@@ -41,6 +41,7 @@ $lean = 'C:\Tools\lean-4.34.0-windows'
 $python = (Get-Command python).Source
 $repo = Join-Path $env:USERPROFILE 'AxiwardProjects\queue'
 $view = Join-Path $repo '.view\package-1'
+codex --version
 & $cli init $repo "$app\examples\fifo\policy" $lean
 & $cli session $repo $view $python "$app\adapter\server.py"
 ```
@@ -49,7 +50,15 @@ $view = Join-Path $repo '.view\package-1'
 
 ## 从源码启动
 
-需要 Windows x64、Git、Python 3.11+、Lean **4.34.0 的完整发行版**、已安装的 Codex。使用现有 Codex 账户；Axiward 不调用模型 API，也不要求另配 API key。Python 适配器只使用标准库。
+需要 Windows x64、Git、Python 3.11+、Lean **4.34.0 的完整发行版**、已安装的 Codex。使用现有 Codex 账户；Axiward 不调用模型 API，也不要求另配 API key。Python 适配器只使用标准库。实际候选核验需要从当前进程启动 `codex`，因此同一个 PowerShell 中 `codex --version` 必须成功；桌面应用已安装不等于普通终端 PATH 已包含其 CLI。缺失时确认现有 codex.exe 位置，仅给当前终端补路径：
+
+```powershell
+$codexDir = 'C:\path\to\directory-containing-codex.exe'
+$env:PATH = "$codexDir;$env:PATH"
+codex --version
+```
+
+初始化、建 session、领取新包及封存执行/精化候选会先检查入口，缺失时明确提示且不实施该步。已登记请求的幂等返回和原包恢复仍可用，参数冲突仍会被拒绝。预检不启动模型或沙箱，不代表候选核验通过，也不改全局配置。若依赖在已封存后的核验阶段消失，失败回复与证据指出具体原因；已结束的旧包保持结束，修正环境后领取新包。
 
 下面在 Axiward 源码仓库根目录运行；把 Lean 路径换成本机位置。示例在开发仓库的 `.work/` 下创建一个独立受管项目，其内部使用普通签出布局：
 
@@ -62,6 +71,7 @@ $lean = 'C:\Tools\lean-4.34.0-windows'
 $python = (Get-Command python).Source
 
 & "$lean\bin\lake.exe" build axiward
+codex --version
 & $cli init $repo "$app\examples\fifo\policy" $lean
 & $cli session $repo $view $python "$app\adapter\server.py"
 ```

@@ -168,7 +168,7 @@ def check (repo : FilePath) (scope : Scope) (candidate : Candidate) : IO Result 
     for name in #["input.json", "01-build.json", "02-audit.json", "03-replay.json"] do
       if ← (work / name).pathExists then
         logs := logs.push ⟨name, ← Git.hashFile repo (work / name)⟩
-    return ⟨.unknown "verifier could not complete; see retained evidence",
+    return ⟨.unknown s!"verifier could not complete: {error}; see retained evidence",
       ← Git.tree repo none logs⟩
 
 end Axiward.Verifier

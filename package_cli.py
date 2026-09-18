@@ -23,6 +23,8 @@ README = r"""# Axiward 本机 CLI
 Windows x64；使用已有 Git、Python 3.11+、Codex 与完整 Lean 4.34.0 工具链。
 Git 需支持 SHA-256 仓库和 `merge-tree --write-tree --merge-base`。
 无需复制源码仓库或 Lean 工具链到本目录。版本与文件 SHA-256 见 `release.json`。
+实际核验通过 Codex CLI 启动：同一个 PowerShell 中 `codex --version` 必须成功。
+安装了 Codex 桌面应用不代表普通终端已能找到 codex.exe；发行目录也不捆绑 Codex。
 本版用于新建受管项目；此前缺少 `source/` 的试验仓库不能直接加载。
 没有自动迁移，不会为升级删除旧项目数据。
 
@@ -35,11 +37,27 @@ $lean = 'C:\path\to\lean-4.34.0-windows'
 $python = (Get-Command python).Source
 $repo = Join-Path $env:USERPROFILE 'AxiwardProjects\queue'
 $view = Join-Path $repo '.view\package-1'
+codex --version
 & $cli --version
 & $cli init $repo "$app\examples\fifo\policy" $lean
 & $cli session $repo $view $python "$app\adapter\server.py"
 & $cli overview $repo
 ```
+
+若 `codex --version` 报找不到命令，确认本机现有 codex.exe 的位置，
+只在当前 PowerShell 临时添加它所在的目录，再重新检查：
+
+```powershell
+$codexDir = 'C:\path\to\directory-containing-codex.exe'
+$env:PATH = "$codexDir;$env:PATH"
+codex --version
+```
+
+这是当前终端的环境设置，不修改全局 PATH，也不安装 Codex。
+CLI 会在初始化、建 session、领取新包和封存实现/精化候选前检查该入口。
+已登记请求的重放和原包恢复仍可用，参数冲突仍会被拒绝。
+此检查仅确认命令可启动，不代表候选已经通过数学核验。
+若核验时入口消失，原包仍按 unresolved 结束；修正环境后使用新包，不复活旧包。
 
 `policy` 是满时拒绝的 FIFO 规格；`policy-overwrite` 是满时覆盖最旧元素的登记规格。
 将 `$view` 加入 Codex 并信任项目，重新打开任务，确认 Axiward MCP 工具已加载。

@@ -39,6 +39,6 @@ python Tests/native.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\n
 
 ## 本机发行目录
 
-在干净的源码签出中执行 `python package_cli.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\axiward-cli-new`，生成独立 exe、薄适配器、两套登记策略和来源/文件摘要清单。发行目录的使用不依赖源码签出；Git、Python、Codex 和完整 Lean 工具链仍使用本机既有安装。详细启动命令见发行目录 README 和[使用说明](docs/product-guide.md)。本版面向新建受管项目；先前缺少 `source/` 的试验仓库不能直接加载，不会自动迁移或清理。
+在干净的源码签出中执行 `python package_cli.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\axiward-cli-new`，生成独立 exe、薄适配器、两套登记策略和来源/文件摘要清单。发行目录的使用不依赖源码签出；Git、Python、Codex 和完整 Lean 工具链仍使用本机既有安装；启动 CLI 的同一终端必须能运行 `codex --version`，桌面应用存在不等于 CLI 已进入 PATH。详细启动命令见发行目录 README 和[使用说明](docs/product-guide.md)。本版面向新建受管项目；先前缺少 `source/` 的试验仓库不能直接加载，不会自动迁移或清理。
 
 MIT License.

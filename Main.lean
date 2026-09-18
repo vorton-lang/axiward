@@ -55,6 +55,7 @@ def main (args : List String) : IO UInt32 := do
       | other => other
     match args with
     | ["init", repo, policy, toolchain] =>
+      Sandbox.requireCodex
       let _ ← FifoPolicy.validateRoot policy
       Git.initRepository repo
       let scope ← Verifier.importPolicy repo policy toolchain
@@ -71,6 +72,9 @@ def main (args : List String) : IO UInt32 := do
         ("obsoleteGoals", toJson obsolete),
         ("transitions", toJson loaded.state.journal.entries.length)])
     | ["begin", repo, id, owner, node, action] =>
+      let loaded ← Git.load repo
+      unless loaded.state.journal.entries.any (fun entry => entry.request.id == id) do
+        Sandbox.requireCodex
       send repo id .controller (.begin owner (← actionOf action)) (← serialOf node)
     | ["submit", repo, id, owner, serial, directory, node] =>
       let node ← serialOf node
@@ -78,6 +82,9 @@ def main (args : List String) : IO UInt32 := do
       let loaded ← Git.load repo
       let some action := Controller.submissionAction loaded.state node serial
         | throw (IO.userError "unknown package")
+      if (action == .execute || action == .refine) &&
+          !loaded.state.journal.entries.any (fun entry => entry.request.id == id) then
+        Sandbox.requireCodex
       let candidate ← match action with
         | .execute => Verifier.importCandidate repo directory
         | .refine => Refinement.importCandidate repo directory

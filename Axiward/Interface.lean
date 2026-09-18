@@ -565,6 +565,7 @@ private def nextUnlocked (repo root : FilePath) (id owner : String) (selection :
     return ← workerStatus repo loaded
   let some (node, action) := selection
     | throw (IO.userError "choose a node and action from status and handoff before requesting a new package")
+  Sandbox.requireCodex
   let reply ← Git.transact repo ⟨id, .controller, .begin owner action, node⟩
   let .acquired serial := reply | throw (IO.userError "allocation failed")
   exportView repo root owner node serial
@@ -629,6 +630,7 @@ def delivery (repo destination : FilePath) : IO Json := do
   return manifest
 
 def session (repo view python adapter : FilePath) : IO Json := do
+  Sandbox.requireCodex
   let _ ← Git.load repo
   unless view.isAbsolute && python.isAbsolute && adapter.isAbsolute do
     throw (IO.userError "session paths must be absolute")
