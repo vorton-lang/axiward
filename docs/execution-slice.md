@@ -103,7 +103,7 @@ flowchart TD
 
 这些内容共用 `main` 的 Git 历史，旧路线和旧产物由历史提交保留。每次写入使用私有索引构造完整树，再比较旧提交更新引用；冲突后按最新状态重新检查。只改变状态时保留无关源码。
 
-恢复同时检查规格、封存候选、正式 `source/`、精化凭据和交付物的实际对象摘要。普通仓库的 `.git/axiward-work/` 保存私有索引等临时文件，核验副本位于仓库旁的 `<repo>.checks/`；二者不参与正式状态判断。
+恢复同时检查规格、封存候选、正式 `source/`、精化凭据和交付物的实际对象摘要。普通仓库的 `.git/axiward-work/` 保存私有索引等临时文件，核验副本位于项目根 `.checks/`，交付默认位于 `delivery/`；这些可再生目录由新项目忽略，不参与正式状态判断。包根直接放候选文件，Git 内 `.axiward/candidate/` 的不可变证据结构保留。
 
 当前持久化协议为 schema 3；程序明确拒绝加载 schema 1、2，不自动改写旧记录。
 
@@ -137,7 +137,11 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 | `leanchecker Axiward` | 独立重放已编译证明。 | 4.304 |
 | `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 |
 | `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 |
-| `integration.py --case accepted` | 依赖预检改动后的实际 Lean 构建、审计、证明重放、接纳、导出并运行。 | 24.359 |
+| `integration.py --case accepted` | 项目内 `.checks/` 的实际 Lean 构建、审计、证明重放、输入绑定、接纳、默认根内交付并运行。 | 25.015 |
+| `integration.py --case wrong-fifo` | 新启动器实际拒绝错误证明，保持原始诊断中的 ⊢、α 及错误阶段。 | 11.796 |
+| `layout.py` 四动作 | execute/refine/explore/requestDecision 各独立检查包根文件、真实封存字节及元数据排除；核验调用明确截断，不提供模拟 passed。 | 17.125 / 17.141 / 15.469 / 15.484 |
+| `layout.py --case delivery` | 默认根内交付、实际输出路径、不覆盖、拒绝外部/保留路径；使用已接纳的 Git 夹具，不重复数学核验。 | 3.844 |
+| `workflow.py --case intent` | 扁平包根 trials 路径的真实适配器/Git 意图重放，受控协议输入，不重新派发操作。 | 14.891 |
 | `integration.py --case merged` | 真实三方合并与联合数学核验，双方源码保留、旧凭据更新、未完成条款不加入。前置已接纳记录为夹具。 | 27.500 |
 | `integration.py --case merge-breaks-prior` | B 的新目标之外，删除 A 的已接纳保证会被实际 Lean 拒绝；旧源码/成果不变。前置记录为夹具。 | 15.594 |
 | `integration.py --case assembled` | 夹具提供子成果，生产控制器实际核验共享源码的父目标并运行交付物。 | 25.359 |
@@ -154,6 +158,8 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 `merged` 首跑被 28 秒保护终止，不计通过；保留核验全部阶段后减少重复规格摘要生成，第二次才通过。不可变诊断投影另在 `merge-breaks-prior` 的真实失败上只读核对，1.467 秒：实际合并候选不同于原稿，读取 `Gate.lean:12:48` 的缺失定理诊断，HEAD 不变且未重跑核验。新包完整交接和访问拒绝的六个独立边界均由 `Tests/diagnostic_handoff.py` 验证，包含 Git clone、session 和 next；原失败项目 HEAD 不变，未生成新的核验目录。可先运行 `integration.py --case merge-breaks-prior`，再用 `python Tests/diagnostic_handoff.py --repo <该检查输出>/project --output <新目录> --case acquisition`；其他 case 为 evidence、history、candidate、previous-file、initial-source。纯诊断投影入口是 `lake env lean --run Tests/Diagnostics.lean <新目录>`。
 
 Codex 依赖检查仅运行 `codex --version`，确认当前进程能启动该入口；不安装或发现其他位置的 CLI，不写全局环境，不替代实际核验。`Sandbox` 在真正启动外部进程时也保留具体错误。缺失入口的检查只改变新建 `.work/` 项目的子进程环境，未操作用户正在使用的项目。
+
+目录内收的正常核验曾遇父 deny 继承和 PowerShell cwd 降级，相关失败以及两次 28 秒超时均不计通过。最终方案只对新空 snapshot 设置精确 ACL，并直接绑定核验子进程 cwd；完整 profile、核验阶段和输入绑定检查保留，详见[核验进程边界](permissions.md#候选核验进程)。移除了 check 入口重复加载同一状态，以及 accepted 边界中已由实际 deliver 执行的重复完整加载；没有删去交付运行和绑定断言。新检查证据在 `.work/nested-checks-*`、`.work/root-layout-*`，不自动清理。
 
 ### 证明和外部边界
 

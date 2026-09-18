@@ -14,8 +14,8 @@ def submissionAction (s : State) (node serial : Nat) : Option Action := do
   | .begin _ action => some action
   | _ => none
 
-def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Option Reply) := do
-  let loaded ← Git.load repo
+private def recordedCheckIn (repo : FilePath) (loaded : Git.Loaded) (id : String)
+    (node serial : Nat) : IO (Option Reply) := do
   if let some entry := loaded.state.journal.entries.find? (fun e => e.request.id == id) then
     unless entry.request.node == node && entry.request.actor == .controller do
       throw (IO.userError "request ID conflict")
@@ -28,6 +28,9 @@ def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Opti
       return some entry.reply
     | _ => throw (IO.userError "request ID conflict")
   return none
+
+def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Option Reply) := do
+  recordedCheckIn repo (← Git.load repo) id node serial
 
 /-- Admission is bound to the exact formal commit used for merging and checking.
     A competing commit requires a fresh check, never replay of the old verdict. -/
@@ -117,8 +120,8 @@ def recordCheck (repo : FilePath) (id : String) (node serial : Nat)
 
 
 def check (repo : FilePath) (id : String) (node serial : Nat) : IO Reply := do
-  if let some reply ← recordedCheck repo id node serial then return reply
   let loaded ← Git.load repo
+  if let some reply ← recordedCheckIn repo loaded id node serial then return reply
   if loaded.state.domain.workflow.paused then throw (IO.userError "project paused; submission retained for resume")
   let some target := loaded.state.nodes[node]? | throw (IO.userError "unknown node")
   let some package := target.domain.active | throw (IO.userError "no active package")

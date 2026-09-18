@@ -112,7 +112,7 @@ def main (args : List String) : IO UInt32 := do
       require ((← Git.load repo).head == loaded.head) "late replay wrote another event"
     else
       require ((← Controller.check repo "prepare" 0 0) == .prepared 0) "plan admission failed"
-      let trial := repo / ".view/worker/work/trials/trial"
+      let trial := repo / ".view/worker/trials/trial"
       IO.FS.createDirAll trial
       IO.FS.writeFile (trial / "Queue.lean") "protocol fixture"
       let first ← FlowIO.startExperiment repo "worker/trial" "worker" 0 0 trial
@@ -121,7 +121,7 @@ def main (args : List String) : IO UInt32 := do
       let replay ← FlowIO.startExperiment repo "worker/trial" "worker" 0 0 trial
       require ((replay.getObjValAs? Bool "replayed").toOption == some true) "lost intent was restarted"
       let before ← Git.load repo
-      let captureFile := repo.parent.getD repo / "capture.json"
+      let captureFile := repo / ".view" / "capture.json"
       let command := #[(← IO.appPath).toString, "run-experiment", repo.toString, "0", "worker/trial"]
       let capture (completed : Bool) := Json.mkObj [
         ("source", toJson "codex-command-exec"), ("command", toJson command),

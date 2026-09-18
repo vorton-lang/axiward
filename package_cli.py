@@ -21,6 +21,8 @@ RUNTIME_FILES = ["adapter/server.py", "adapter/native.py", "LICENSE"] + [
 README = r"""# Axiward 本机 CLI
 
 Windows x64；使用已有 Git、Python 3.11+、Codex 与完整 Lean 4.34.0 工具链。
+Codex Windows 原生沙箱的公开本机组 `CodexSandboxUsers` 必须已初始化；
+Axiward 只解析现有身份，不创建账户组，缺失时明确报错。
 Git 需支持 SHA-256 仓库和 `merge-tree --write-tree --merge-base`。
 无需复制源码仓库或 Lean 工具链到本目录。版本与文件 SHA-256 见 `release.json`。
 实际核验通过 Codex CLI 启动：同一个 PowerShell 中 `codex --version` 必须成功。
@@ -66,12 +68,27 @@ Worker 使用已批准的完全访问模式，工作边界由生成的 `AGENTS.m
 
 给 worker 的起始指令：先读取 Axiward status 和 handoff，自行选择 node 和 action，
 调用 next 后按 ACTION.md 完成本包；需要用户决定时用 ask_user。
+实现包的 `Queue.lean`、`Proofs.lean` 直接写在 `$view` 下。
+包根的 `AGENTS.md` 和 `ACTION.md` 分别说明工作边界与当前动作；
+保留生成的规格、目标和 `.codex/` 配置，临时研究文件放在 `tmp/`。
 一个视图永久绑定一个包；新包通过 session 创建新的 `.view/<名称>/` 空间。
 session 记录 exe、适配器和 Python 的绝对路径，开始使用后应保持发行目录位置稳定。
 
+核验临时副本位于项目根的 `.checks/`；默认交付目录为项目根的 `delivery/`。
+这两个目录和 `.view/` 均由受管项目的 `.gitignore` 排除。
+已有项目和工作空间不会自动迁移或清理。
+
 Discussion agent 在路线变更后读取 `invalidatedPackages`，先通过 Codex 停止对应 worker，
 再用控制端 `reclaim` 回收其包。Axiward 不启动或停止 Codex worker。
-用 `overview` 查看状态；`complete=true` 后可用 `deliver <repo> <新输出目录>` 导出产品。
+用 `overview` 查看状态；`complete=true` 后导出并运行：
+
+```powershell
+& $cli deliver $repo
+& "$repo\delivery\.lake\build\bin\fifo_demo.exe" 2 a b c
+```
+
+`deliver` 默认新建 `$repo\delivery`；显式输出路径也必须是项目根内的新目录，
+不能位于 `.git/`、`.axiward/`、`source/`、`product/`、`.view/` 或 `.checks/` 中。
 具体命令参数见 `axiward.exe --help`。本发行物的启动检查不代表真实 agent 自主推进已验收。
 """
 

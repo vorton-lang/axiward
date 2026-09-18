@@ -20,17 +20,64 @@ def pathRule (path : FilePath) (access : String) : String :=
   quote (path.normalize.toString.replace "\\" "/") ++ " = " ++ quote access
 
 def workRoot (repo : FilePath) : FilePath :=
-  (repo.parent.getD repo) / (repo.fileName.getD "project" ++ ".checks")
+  repo / ".checks"
 
 def scratch (repo : FilePath) : IO FilePath := do
+  let repo ← IO.FS.realPath repo
   let root := workRoot repo
   IO.FS.createDirAll root
+  unless (← IO.FS.realPath root).normalize == root.normalize do
+    throw (IO.userError "checks directory must not redirect outside its project path")
   let path := root / s!"run-{← IO.monoNanosNow}-{← IO.rand 0 1000000000}"
   IO.FS.createDir path
   return path
 
 private def powershellLiteral (value : String) : String :=
   "'" ++ value.replace "'" "''" ++ "'"
+
+/-- Windows argv quoting for ProcessStartInfo.Arguments (not shell quoting). -/
+private def windowsArgument (value : String) : String := Id.run do
+  let mut result := "\""
+  let mut slashes := 0
+  for c in value.toList do
+    if c == '\\' then slashes := slashes + 1 else
+      let count := if c == '"' then 2 * slashes + 1 else slashes
+      result := result ++ String.ofList (List.replicate count '\\') ++ String.singleton c
+      slashes := 0
+  return result ++ String.ofList (List.replicate (2 * slashes) '\\') ++ "\""
+
+/-- Only a newly created empty snapshot receives an inheritance boundary. The
+    controller grants the existing Codex sandbox identity read/execute access
+    there. The native harness retains the canonical repository deny ACL and
+    grants write access only to the declared build outputs. -/
+def createSnapshot (repo work : FilePath) : IO FilePath := do
+  let repo ← IO.FS.realPath repo
+  unless work.parent == some (workRoot repo) && (← IO.FS.realPath work).normalize == work.normalize do
+    throw (IO.userError "snapshot workspace must be a direct project checks directory")
+  let snapshot := work / "snapshot"
+  if ← snapshot.pathExists then throw (IO.userError "snapshot requires a new empty directory")
+  IO.FS.createDir snapshot
+  unless (← IO.FS.realPath snapshot).normalize == snapshot.normalize do
+    throw (IO.userError "snapshot must not be a redirected directory")
+  let some systemRoot ← IO.getEnv "SystemRoot"
+    | throw (IO.userError "cannot locate Windows PowerShell")
+  let powershell := FilePath.mk systemRoot / "System32/WindowsPowerShell/v1.0/powershell.exe"
+  let command := "$ErrorActionPreference = 'Stop'\n$directory = Get-Item -LiteralPath " ++
+    powershellLiteral snapshot.toString ++ " -Force\n" ++
+    "if (($directory.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $directory.GetFileSystemInfos().Length -ne 0) { throw 'snapshot must be empty and not redirected' }\n" ++
+    "try { $reader = [Security.Principal.NTAccount]::new($env:COMPUTERNAME, 'CodexSandboxUsers').Translate([Security.Principal.SecurityIdentifier]) } catch { throw 'Codex native sandbox group CodexSandboxUsers is not initialized; no account was created' }\n" ++
+    "$owner = [Security.Principal.WindowsIdentity]::GetCurrent().User\n" ++
+    "$acl = [Security.AccessControl.DirectorySecurity]::new()\n$acl.SetOwner($owner)\n$acl.SetAccessRuleProtection($true, $false)\n" ++
+    "foreach ($identity in @($owner, [Security.Principal.SecurityIdentifier]::new('S-1-5-18'), [Security.Principal.SecurityIdentifier]::new('S-1-5-32-544'))) {\n" ++
+    "  $acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($identity, 'FullControl', 'ContainerInherit, ObjectInherit', 'None', 'Allow'))\n}\n" ++
+    "$acl.AddAccessRule([Security.AccessControl.FileSystemAccessRule]::new($reader, 'ReadAndExecute', 'ContainerInherit, ObjectInherit', 'None', 'Allow'))\n" ++
+    "$directory.SetAccessControl($acl)\n"
+  let result ← IO.Process.output {
+    cmd := powershell.toString
+    args := #["-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command] }
+  unless result.exitCode == 0 do
+    throw (IO.userError s!"cannot prepare empty snapshot ACL: {result.stderr}")
+  return snapshot
 
 /-- Codex shares SID registration across projects in one user environment.
     Hold this gate until its restricted child has started, not until work ends. -/
@@ -83,9 +130,18 @@ def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
   let powershell := FilePath.mk systemRoot / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
   let command := "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)\n" ++
     "[Console]::Out.WriteLine('AXIWARD_SANDBOX_STARTED')\n[Console]::Out.Flush()\n" ++
-    "try {\n& " ++ powershellLiteral (toolRoot / "bin" / "lake.exe").toString ++ " " ++
-    String.intercalate " " (arguments.toList.map powershellLiteral) ++
-    "\nexit $LASTEXITCODE\n} catch {\n[Console]::Error.WriteLine($_.Exception.Message)\nexit 1\n}\n"
+    "try {\n$start = [Diagnostics.ProcessStartInfo]::new()\n$start.FileName = " ++
+    powershellLiteral (toolRoot / "bin" / "lake.exe").toString ++ "\n$start.WorkingDirectory = " ++
+    powershellLiteral snapshot.toString ++ "\n$start.Arguments = " ++
+    powershellLiteral (String.intercalate " " (arguments.toList.map windowsArgument)) ++
+    "\n$start.UseShellExecute = $false\n$start.CreateNoWindow = $true\n" ++
+    "$start.RedirectStandardOutput = $true\n$start.RedirectStandardError = $true\n" ++
+    "$start.StandardOutputEncoding = [Text.UTF8Encoding]::new($false)\n$start.StandardErrorEncoding = [Text.UTF8Encoding]::new($false)\n" ++
+    "$process = [Diagnostics.Process]::Start($start)\n" ++
+    "$stdout = $process.StandardOutput.ReadToEndAsync()\n$stderr = $process.StandardError.ReadToEndAsync()\n" ++
+    "$process.WaitForExit()\n[Console]::Out.Write($stdout.GetAwaiter().GetResult())\n" ++
+    "[Console]::Error.Write($stderr.GetAwaiter().GetResult())\nexit $process.ExitCode\n" ++
+    "} catch {\n[Console]::Error.WriteLine($_.Exception.Message)\nexit 1\n}\n"
   -- Preserve per-project verifier coordination; the shared gate above only
   -- serializes startup, so distinct projects can execute their checks together.
   let gate ← IO.FS.Handle.mk (repo / ".git" / "axiward-verifier.lock") .append

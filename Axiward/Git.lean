@@ -277,7 +277,7 @@ def create (repo : FilePath) (scope : Scope) : IO Unit := do
   unless validRequirements scope.requirements do throw (IO.userError "invalid requirements")
   let state ← decode (restore { initial := scope })
   let stateBlob ← hashText repo (toJson state.journal).compress
-  let ignore ← hashText repo "/.view/\n"
+  let ignore ← hashText repo "/.view/\n/.checks/\n/delivery/\n"
   let root ← tree repo none #[⟨".axiward/state.json", stateBlob⟩, ⟨".gitignore", ignore⟩]
     #[(".axiward/policy", scope.policy)]
   let commit ← commitTree repo root none "Axiward initialization\n"

@@ -50,7 +50,7 @@ codex --version
 
 ## 从源码启动
 
-需要 Windows x64、Git、Python 3.11+、Lean **4.34.0 的完整发行版**、已安装的 Codex。使用现有 Codex 账户；Axiward 不调用模型 API，也不要求另配 API key。Python 适配器只使用标准库。实际候选核验需要从当前进程启动 `codex`，因此同一个 PowerShell 中 `codex --version` 必须成功；桌面应用已安装不等于普通终端 PATH 已包含其 CLI。缺失时确认现有 codex.exe 位置，仅给当前终端补路径：
+需要 Windows x64、Git、Python 3.11+、Lean **4.34.0 的完整发行版**、已安装的 Codex 及其已初始化的 Windows 原生沙箱（本机公开组 `CodexSandboxUsers`）。Axiward 不创建该账户组；缺失会给出明确依赖错误。使用现有 Codex 账户；Axiward 不调用模型 API，也不要求另配 API key。Python 适配器只使用标准库。实际候选核验需要从当前进程启动 `codex`，因此同一个 PowerShell 中 `codex --version` 必须成功；桌面应用已安装不等于普通终端 PATH 已包含其 CLI。缺失时确认现有 codex.exe 位置，仅给当前终端补路径：
 
 ```powershell
 $codexDir = 'C:\path\to\directory-containing-codex.exe'
@@ -84,9 +84,9 @@ codex --version
 
 > 使用 Axiward 完成本包。先读取 status 和 handoff，自行选择节点与动作，再向 next 提供 node 和 action。按已核准的流程工作，需要我决定时通过 ask_user 询问。包结束后保存交接；后续新包使用新的工作空间。
 
-`$repo` 是人可以直接打开的项目根：`.git/` 保存 Git 数据，`.axiward/` 管理状态及正式成果随 Git 提交，`source/` 保存正式共享源码，`product/` 保留当前格式的根产物。`.gitignore` 排除 `/.view/`；每个包的工作空间是其中一个独立目录。控制端提交后同步普通签出文件，碰到会被覆盖的本地修改或未跟踪文件则拒绝继续，不丢弃草稿。若提交已记录而签出中断，后续写请求会先恢复签出；只读状态始终来自 Git 提交。
+`$repo` 是人可以直接打开的项目根：`.git/` 保存 Git 数据，`.axiward/` 管理状态及正式成果随 Git 提交，`source/` 保存正式共享源码，`product/` 保留当前格式的根产物。`.gitignore` 排除 `/.view/`、`/.checks/` 和 `/delivery/`；每个包的工作空间是其中一个独立目录。控制端提交后同步普通签出文件，碰到会被覆盖的本地修改或未跟踪文件则拒绝继续，不丢弃草稿。若提交已记录而签出中断，后续写请求会先恢复签出；只读状态始终来自 Git 提交。
 
-`.view/<包空间>/` 初始只有连接配置、说明和空的 `work/`、`tmp/`；领取后规格、目标、材料与候选才进入 `work/`。未提交草稿不由 Axiward 保证保存或恢复。受管项目的正式 Git 写入通过 Axiward，普通浏览无需控制入口。
+`.view/<包空间>/` 本身就是候选工作区：`Queue.lean`、`Proofs.lean` 或当前动作所需文件直接放在包根，不再经过 `work/`、`candidate/`。初始只有 `.codex/` 配置、`AGENTS.md` 和 `tmp/`；领取后在包根提供 `ACTION.md`、规格、目标、view/evidence JSON，按需材料放在 `materials/`。不再生成重复的 `WORK.md`、`START.md`。核验临时副本在项目根 `.checks/<run>/snapshot/`，交付默认在 `delivery/`；正常流程不再生成仓库旁检查或交付目录。旧目录和已有工作空间不会自动移动、迁移或删除。未提交草稿不由 Axiward 保证保存或恢复。受管项目的正式 Git 写入通过 Axiward，普通浏览无需控制入口。
 
 每个视图同时只给一个原生任务使用。`session` 先创建空工作空间与身份，首次领取后永久绑定一个包；编号不需要预先写在目录名里。包结束后 `next` 返回原包及 `requiresNewSession`，新包须用另一个 `.view/<名称>/` 空间和新 session。恢复原包仍使用其所属视图，另一身份不能自动接管。可以在新空间继承原 worker 的对话上下文，但不沿用旧空间权限。包不会自动过期，系统不自动启动或调度 worker。
 
@@ -100,16 +100,18 @@ codex --version
 
 ## Agent 的四条工作流程
 
+封存只读取动作白名单中的候选文件：生成的 `Spec.lean`、`Goal.lean`、说明和 `.codex/` 不进入候选。正式 Git 中 `.axiward/candidate/` 仍是不可变封存证据，与用户工作区的扁平布局无关。
+
 `status` 返回项目地图和项目层 `handoff`。Worker 根据这些材料明确选择节点与 `execute`、`refine`、`explore`、`requestDecision` 中的一种动作，向 `next` 同时提供 `node` 和 `action`。控制器核准后返回固定动作、工作包编号、候选目录、规格和完整包级交接；领取后不能换类。省略节点和动作只用于恢复当前空间已经绑定的包，不会自动选择或领取新包。重新取得视图、恢复核验或接收答复时也提供完整交接。
 
 交接直接列出相关目标与成果、适用决定、正式尝试的结局与原因、阶段和在途操作。它每次从 Git 正式状态计算，不维护已读状态；新身份或失去上下文的同一身份都会再次得到必要内容。`status.head` 与 `handoff.currentHead` 来自同一快照。`snapshot` / `handoff.inputSnapshot.head` 则固定为领包时的输入，后来的变化不会替换包内源码或规格。
 
 | 动作 | Agent 写什么 | 系统做什么 |
 | --- | --- | --- |
-| `execute` | `candidate/Queue.lean`、`Proofs.lean` | 封存一次终稿；核验当前命题与实际产物，通过后闭合节点。 |
-| `refine` | `candidate/plan.json`、`Refinement.lean` | 核验分解蕴含关系、依赖与复用；子目标完成后自动核验父目标。 |
-| `explore` | `candidate/exploration.json`，最后写 `report.md` | 先 `prepare`，再按预算运行实验，最后 `conclude`；探索本身不关闭产品目标。 |
-| `requestDecision` | `candidate/question.json` | `submit` 保存问题，`ask_user` 走独立用户通道；答复持久化后返回原任务。 |
+| `execute` | `Queue.lean`、`Proofs.lean` | 封存一次终稿；核验当前命题与实际产物，通过后闭合节点。 |
+| `refine` | `plan.json`、`Refinement.lean` | 核验分解蕴含关系、依赖与复用；子目标完成后自动核验父目标。 |
+| `explore` | `exploration.json`，最后写 `report.md` | 先 `prepare`，再按预算运行实验，最后 `conclude`；探索本身不关闭产品目标。 |
+| `requestDecision` | `question.json` | `submit` 保存问题，`ask_user` 走独立用户通道；答复持久化后返回原任务。 |
 
 `Spec.lean` 是定义，`Goal.lean` 列出实际要求的定理名字与类型，`claims.json` 标出本节点负责的条款。每个包的 `ACTION.md` 提供本动作的文件格式和可直接照写的模板。`search` 可找到尚未导出的资料，`view_add` 导出所选资源；`node/` 材料来自固定输入快照，`current/` 提供交接所引用的当前正式历史、证据和报告，继续受相同访问规则约束。必要上下文不可见时，交接明确报告 `blockedByMissingContext`，不能当作完整输入继续依赖它。
 
@@ -206,12 +208,11 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 `rootClosed` 表示根目标有当前有效证明；`complete` 还要求当前路线没有活动包、没有未解决的在途实验。条件满足就宣布完成，不等待旧路线 worker 停止或包回收。只有 `complete=true` 才能导出交付：
 
 ```powershell
-$delivery = Join-Path $app '.work\queue\delivered'
-& $cli deliver $repo $delivery
-& "$delivery\.lake\build\bin\fifo_demo.exe" 2 a b c
+& $cli deliver $repo
+& "$repo\delivery\.lake\build\bin\fifo_demo.exe" 2 a b c
 ```
 
-输出目录包含实现、证明、可执行文件，以及 `axiward-delivery.json`（规格、Git 快照、产物摘要）和 `axiward-receipt.json`。导出要求新目录，不覆盖已有交付物。
+输出目录包含实现、证明、可执行文件，以及 `axiward-delivery.json`（规格、Git 快照、产物摘要）和 `axiward-receipt.json`。默认导出到项目根的 `delivery/`，返回实际目录；要求新目录，不覆盖已有交付物。后续版本可用 `deliver <repo> delivery/<新名称>`；显式路径也必须位于项目根内，不能进入 `.git/`、`.axiward/`、`source/`、`product/`、`.view/`、`.checks/` 等保留子树，也不能通过重定向父目录导出到其他位置。自定义目录在 `delivery/` 之外时，需自行决定其 Git 忽略规则。
 
 ## 保证与边界
 

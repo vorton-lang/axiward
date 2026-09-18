@@ -31,7 +31,7 @@ def usage : String := "axiward init <new-absolute-project-directory> <trusted-po
   axiward view-add <repo> <worker-id> <view> <node> <serial> <resource-id>\n\
   axiward decide <repo> <request-id> <node> <serial> <choice> <comment> (user-only)\n\
   axiward pause <repo> <request-id> <reason> | resume <repo> <request-id> (user-only)\n\
-  axiward deliver <repo> <new-output-directory>\n\
+  axiward deliver <repo> [new-project-relative-directory=delivery]\n\
   axiward reconcile <repo> <request-id> <node> <operation-id> <runner-stopped-reason> (user-only)\n\
   axiward access <repo> <request-id> <resource-id> allow|deny (user-only)\n\
   axiward status <repo>\n\
@@ -145,6 +145,7 @@ def main (args : List String) : IO UInt32 := do
       send repo id .user (.workflow (.access resource (permission == "allow"))) 0
     | ["reconcile", repo, id, node, operation, reason] =>
       emit (toJson (← FlowIO.reconcile repo id (← serialOf node) operation reason))
+    | ["deliver", repo] => emit (← Interface.delivery repo)
     | ["deliver", repo, directory] => emit (← Interface.delivery repo directory)
     | ["--version"] => IO.println "Axiward 0.2.0 (R0; Lean 4.34.0; Windows; FIFO verifier)"
     | ["--help"] | [] => IO.println usage

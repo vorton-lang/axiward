@@ -38,12 +38,12 @@ TOOLS = {
     "search": ("Search fixed node/ input materials and explicitly current/ handoff records. Access rules apply.", schema({**PACKAGE, "query": STRING})),
     "view_add": ("Export a catalog resource into the package view. Current access rules apply.", schema({**PACKAGE, "resource": STRING})),
     "evidence": ("Export actual checker diagnostics and this package's new observations into evidence.json, separate from model notes.", schema(PACKAGE)),
-    "submit": ("Seal candidate/ once, check it and propagate proofs. For exploration use prepare, then conclude.", schema(REQUEST)),
-    "prepare": ("Admit candidate/exploration.json before experiments (0..8 checker trials).", schema(REQUEST)),
+    "submit": ("Seal this action's candidate files in the package root once, check it and propagate proofs. For exploration use prepare, then conclude.", schema(REQUEST)),
+    "prepare": ("Admit exploration.json before experiments (0..8 checker trials).", schema(REQUEST)),
     "resume": ("Resume checking the same sealed submission after interruption.", schema(PACKAGE)),
     "experiment": ("Run trials/<trial>/Queue.lean + Proofs.lean through the native harness. Records intent first; never replays lost work.",
                    schema({**REQUEST, "trial": STRING})),
-    "conclude": ("Seal candidate/report.md as exploration interpretation; does not close the goal.", schema(REQUEST)),
+    "conclude": ("Seal report.md as exploration interpretation; does not close the goal.", schema(REQUEST)),
     "cancel": ("End your active package; preserve observations and outstanding operations.", schema({**REQUEST, "reason": STRING})),
     "ask_user": ("Present the already registered question through the separate user channel. No answer argument exists.", schema(PACKAGE)),
 }
@@ -82,7 +82,7 @@ class Adapter:
     def package(self, node, serial):
         # Ownership is checked from canonical allocation history, not local files.
         package = self.cli("package-info", self.repo, self.worker, node, serial)
-        directory = (self.view / "work").resolve()
+        directory = self.view
         if not directory.is_relative_to(self.view):
             raise ValueError("package view escapes its root")
         return package["domain"], directory
@@ -127,7 +127,7 @@ class Adapter:
             if name.startswith("UNC\\"):
                 name = "\\\\" + name[4:]
             actual = Path(name)
-            if not actual.is_relative_to(allowed_root) or not actual.is_relative_to(self.view / "work"):
+            if not actual.is_relative_to(allowed_root) or not actual.is_relative_to(self.view):
                 raise ValueError("opened input escapes the assigned work area")
             with os.fdopen(descriptor, "rb", closefd=False) as stream:
                 return stream.read()
@@ -188,7 +188,7 @@ class Adapter:
                 assignment = self.cli("package-info", self.repo, self.worker, node, serial)["action"]
                 files = {"execute": ["Queue.lean", "Proofs.lean"], "refine": ["plan.json", "Refinement.lean"],
                          "explore": ["exploration.json"], "requestDecision": ["question.json"]}[assignment]
-                sealed = self.stage(self.local(directory, "candidate"), files, missing_allowed=True)
+                sealed = self.stage(self.local(directory), files, missing_allowed=True)
                 self.cli("submit", self.repo, self.request_id(data["request_id"]), self.worker, serial,
                          sealed, node)
             result = self.cli("check", self.repo, f"{self.worker}/check/{node}/{serial}", serial, node)
@@ -208,7 +208,7 @@ class Adapter:
             result = self.cli("record-experiment", self.repo, node, request_id, capture)
             return {"result": result, "closesGoal": False, **self.package_view(node, serial)}
         if name == "conclude":
-            sealed = self.stage(self.local(directory, "candidate"), ["report.md"])
+            sealed = self.stage(self.local(directory), ["report.md"])
             result = self.cli("conclude", self.repo, self.request_id(data["request_id"]), self.worker,
                               node, serial, sealed / "report.md")
             return {"result": result, **self.package_view(node, serial)}

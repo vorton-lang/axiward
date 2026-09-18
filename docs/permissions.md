@@ -9,11 +9,17 @@
 - 用户决定走独立问答通道，worker 不自行填写答复或调用管理 CLI。
 - 完全访问模式不会在操作系统层阻止绕行。MCP 入口继续检查参数、归属、候选路径和封存规则，这些检查不等于机器级隔离。
 
-`session` 生成 `sandbox_mode = "danger-full-access"`，保留独立的 MCP 用户问答。生成的 `AGENTS.md` 与 `START.md` 说明上述约定；不修改全局 Codex 配置。
+`session` 生成 `sandbox_mode = "danger-full-access"`，保留独立的 MCP 用户问答。生成的 `AGENTS.md` 与 `ACTION.md` 说明上述约定；不修改全局 Codex 配置。
 
 ## 候选核验进程
 
 `Sandbox.runVerifier` 保留已有的原生限制：候选输入只读、构建输出可写、核验进程不能访问正式仓库。该限制只约束核验进程，不隔离完全访问的 worker。
+
+核验目录位于项目内 `.checks/`。Windows 会把项目根的拒绝 ACL 继承到它的后代，因此控制器只对刚创建、尚未放入输入的 `snapshot/` 建立受保护的 ACL 继承边界。操作前核对真实路径处于本项目 `.checks/<run>/`，拒绝已有、非空或重定向目录；不修改父目录或旧数据的 ACL。
+
+新目录保留控制器用户、SYSTEM、Administrators 的管理权限，从本机公开账户信息解析现有 `CodexSandboxUsers`，只授予其 ReadAndExecute；不增加通用用户组授权，不给该主体源码写权限，不读取凭据或持久化 SID。账户组不存在则明确失败，不自行创建。控制器的精确 RX 授权落实原 profile 声明的 snapshot read；本机 harness 不会补回被继承边界隔断的读 allow。原生 harness 继续执行项目根 deny，且仅向 `.lake/`、`.tmp/`、manifest、audit 输出授予原有写权限。
+
+PowerShell 的路径提供器在父目录拒绝下可能把初始目录退到盘根。启动器通过 .NET `ProcessStartInfo.WorkingDirectory` 直接绑定 Lake 的 snapshot cwd；三阶段使用同一实际目录，stdout/stderr 明确按 UTF-8 完整转发，退出码保持。没有为适配错误 cwd 修改 Audit 或其他规范文件。以上 ACL 和进程调用属于实现依赖与外部信任边界，正常核验通过不等于权限隔离性质的完整证明。
 
 同项目核验使用文件锁排队。共享 Codex 环境的 Axiward 核验调用在受限子进程就绪后释放启动锁，不同项目的核验主体可以并行。已知 SID 注册问题及适配方案见[故障说明](../experiments/windows-sandbox-concurrency.md)。
 

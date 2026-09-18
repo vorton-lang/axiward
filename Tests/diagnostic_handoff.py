@@ -159,7 +159,7 @@ def main():
                 proof = next(record for record in checked["candidateFiles"]
                              if record["file"] == "Axiward/Proofs.lean")
                 assert proof["content"] == {"unavailable": "access revoked"}
-    assert not (output / "project.checks").exists(), "handoff unexpectedly reran the verifier"
+    assert not (repo / ".checks").exists() and not (output / "project.checks").exists(), "handoff unexpectedly reran the verifier"
     assert git(original, "rev-parse", "HEAD") == original_head, "read-only source changed"
     result = {"status": "passed", "case": args.case,
               "seconds": round(time.monotonic() - started, 3),

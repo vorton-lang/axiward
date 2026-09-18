@@ -97,7 +97,7 @@ structure Result where
 
 private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     (work : FilePath) : IO Result := do
-  let snapshot := work / "snapshot"
+  let snapshot ← Sandbox.createSnapshot repo work
   Git.materialize repo scope.policy snapshot
   Git.materialize repo candidate.tree snapshot
   let toolJson ← Git.decode (Json.parse (← IO.FS.readFile (snapshot / "controller-toolchain.json")))

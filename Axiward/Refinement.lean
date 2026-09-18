@@ -87,7 +87,7 @@ def reuseResult (repo : FilePath) (scope : Scope) (proposal : Candidate)
 
 private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     (work : FilePath) (state : State) : IO Result := do
-  let snapshot := work / "snapshot"
+  let snapshot ← Sandbox.createSnapshot repo work
   Git.materialize repo candidate.tree snapshot
   let json ← Git.decode (Json.parse (← IO.FS.readFile (snapshot / "plan.json")))
   let plan : Plan ← Git.decode (fromJson? json)

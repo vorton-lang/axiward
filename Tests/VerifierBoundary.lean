@@ -129,7 +129,7 @@ def metadataCase (repo source : FilePath) (scope : Scope) (kind : String) : IO U
       (← Git.resolve repo "HEAD") == after) "revision replay was applied twice"
     expectRefusal (Controller.revision repo "stale" (source / "examples/fifo/policy") (some token))
       "reviewed change no longer matches"
-    let altered := repo.parent.getD repo / "altered-policy"
+    let altered := repo / ".view" / "altered-policy"
     for path in Verifier.policyFiles do
       let target := altered / path
       IO.FS.createDirAll (target.parent.getD altered)
@@ -210,7 +210,7 @@ def main (args : List String) : IO UInt32 := do
     let toolchain : FilePath := toolchainName
     Git.initRepository repo
     let scope ← Verifier.importPolicy repo (source / "examples/fifo/policy") toolchain
-    let directory := repo.parent.getD repo / "candidate"
+    let directory := repo / ".view" / "fixture"
     IO.FS.createDirAll directory
     if kind == "revision" || kind == "reuse" then
       metadataCase repo source scope kind
@@ -265,15 +265,20 @@ def main (args : List String) : IO UInt32 := do
     -- Local draft mutation must not alter the object passed to the verifier.
     IO.FS.writeFile (directory / "Queue.lean") "unsubmitted replacement"
     let reply ← Controller.check repo "check" 0 0
-    let loaded ← Git.load repo
-    let evidence ← Git.resolve repo s!"{loaded.head}:.axiward/checks/0"
-    let binding ← Git.decode (Json.parse (← Git.readBlob repo (← Git.resolve repo s!"{evidence}:verification/input.json")))
-    require ((binding.getObjValAs? Candidate "candidate").toOption == some candidate)
-      "raw check evidence is not bound to the sealed candidate"
+    let checkInput (head : String) : IO String := do
+      let evidence ← Git.resolve repo s!"{head}:.axiward/checks/0"
+      let binding ← Git.decode (Json.parse (← Git.readBlob repo (← Git.resolve repo s!"{evidence}:verification/input.json")))
+      require ((binding.getObjValAs? Candidate "candidate").toOption == some candidate)
+        "raw check evidence is not bound to the sealed candidate"
+      return evidence
     if kind == "accepted" then
       require (reply == .accepted 0) s!"valid candidate rejected: {repr reply}"
-      let destination := repo.parent.getD repo / "delivery"
-      let _ ← Interface.delivery repo destination
+      let destination := repo / "delivery"
+      -- delivery performs the full production load/binding check. Inspect the
+      -- exact commit it exported without repeating that same complete load.
+      let delivered ← Interface.delivery repo
+      let head : String ← Git.decode (delivered.getObjValAs? String "commit")
+      let _ ← checkInput head
       let run ← IO.Process.output {
         cmd := (destination / ".lake/build/bin/fifo_demo.exe").toString
         args := #["2", "a", "b", "c"] }
@@ -281,11 +286,16 @@ def main (args : List String) : IO UInt32 := do
         (run.stdout.splitOn "dequeue: value=a").length == 2 &&
         (run.stdout.splitOn "dequeue: value=b").length == 2) "committed delivery does not run"
     else
+      let loaded ← Git.load repo
+      let evidence ← checkInput loaded.head
       let .rejected _ reason := reply | throw (IO.userError s!"expected rejection: {repr reply}")
       let expected := if kind == "sorry" then "02-audit" else "01-build"
       require ((reason.splitOn expected).length == 2) s!"wrong rejection stage: {reason}"
       let log ← Git.resolve repo s!"{evidence}:verification/{expected}.json"
       let raw ← Git.readBlob repo log
+      if kind == "wrong-fifo" then
+        require ((raw.splitOn "⊢").length > 1 && (raw.splitOn "α").length > 1 &&
+          (raw.splitOn "�").length == 1) "Lean diagnostic Unicode was damaged by the launcher"
       require (!raw.isEmpty && loaded.state.domain.active.isNone && loaded.state.domain.published.isNone)
         "rejection lost evidence, occupancy or publication guard"
     IO.println s!"PASS: real verifier {kind}"

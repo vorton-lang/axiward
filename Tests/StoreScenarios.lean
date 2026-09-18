@@ -18,7 +18,7 @@ def main (args : List String) : IO UInt32 := do
     let spec ← Git.hashText repo "-- storage fixture, not a proof certificate\n"
     let policy ← Git.tree repo none #[⟨"Axiward/Spec.lean", spec⟩]
     Git.create repo ⟨0, spec, policy, []⟩
-    require ((← IO.FS.readFile (repo / ".gitignore")) == "/.view/\n") "worker spaces are not ignored"
+    require ((← IO.FS.readFile (repo / ".gitignore")) == "/.view/\n/.checks/\n/delivery/\n") "worker spaces are not ignored"
     let initial ← Git.load repo
     let marker ← Git.hashText repo "preserve this unrelated source file\n"
     let seeded ← Git.tree repo (some initial.head) #[⟨"existing.txt", marker⟩]
