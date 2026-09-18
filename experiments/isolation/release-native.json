@@ -1,0 +1,44 @@
+{
+  "result": {
+    "status": "passed",
+    "nativeThread": "01a0b3d7-3f5f-7f32-957f-db24e529a66a",
+    "modelTurns": 0,
+    "userReplies": "simulated test client",
+    "checks": [
+      "native MCP routing",
+      "same-task user elicitation",
+      "durable answer",
+      "notification acknowledgement",
+      "worker cannot read or write canonical storage",
+      "worker cannot alter configuration or read controller/checker files",
+      "copied controller cannot forge user answer",
+      "hard-linked input rejected by opened-handle check",
+      "external reads and unrelated task remain available"
+    ]
+  },
+  "isolation": {
+    "access": {
+      "work-write": "allowed",
+      "config-write": "denied",
+      "repo-read": "denied",
+      "repo-write": "denied",
+      "controller-read": "denied",
+      "adapter-read": "denied",
+      "checker-read": "denied",
+      "external-read": "allowed"
+    },
+    "copiedController": {
+      "exitCode": 1,
+      "stdout": "{\"error\":\"git rev-parse: fatal: not a git repository: 'AXIWARD\\\\.work\\\\native-isolation-release\\\\project.git'\\n\"}\n",
+      "stderr": ""
+    },
+    "unrelatedTask": {
+      "exitCode": 0,
+      "stdout": "",
+      "stderr": ""
+    }
+  },
+  "configuration": "# Axiward: this worker must use the named native profile.\ndefault_permissions = \"axiward_f07964dd3bcb7661\"\napproval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }\n\n[windows]\nsandbox = \"elevated\"\n\n[features]\napps = false\nplugins = false\nhooks = false\nbrowser_use = false\ncomputer_use = false\n\n[permissions.axiward_f07964dd3bcb7661]\ndescription = \"Axiward project worker\"\nfilesystem = { \":root\" = \"read\", \"AXIWARD/.work/native-isolation-release/view\" = \"read\", \"AXIWARD/.work/native-isolation-release/view/work\" = \"write\", \"AXIWARD/.work/native-isolation-release/view/tmp\" = \"write\", \"AXIWARD/.work/native-isolation-release/project.git\" = \"deny\", \"AXIWARD/dist/axiward-0.2.0\" = \"deny\", \"AXIWARD/.work/native-isolation-release/project.git.checks\" = \"deny\", \"AXIWARD/dist/axiward-0.2.0/adapter\" = \"deny\" }\nnetwork = { enabled = true }\n\n[shell_environment_policy.set]\nTMP = \"AXIWARD\\\\.work\\\\native-isolation-release\\\\view\\\\tmp\"\nTEMP = \"AXIWARD\\\\.work\\\\native-isolation-release\\\\view\\\\tmp\"\n\n[mcp_servers.axiward]\ncommand = \"USER_HOME\\\\scoop\\\\apps\\\\python311\\\\current\\\\python.exe\"\nargs = [\"-E\",\"-s\",\"AXIWARD\\\\dist\\\\axiward-0.2.0\\\\adapter\\\\server.py\",\"--exe\",\"AXIWARD\\\\dist\\\\axiward-0.2.0\\\\axiward.exe\",\"--repo\",\"AXIWARD\\\\.work\\\\native-isolation-release\\\\project.git\",\"--view\",\"AXIWARD\\\\.work\\\\native-isolation-release\\\\view\",\"--worker\",\"f07964dd3bcb76617347f7909f2fe2432b436fbc1fe2ac8d85cffd95b9b87819\"]\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n\n[mcp_servers.\"codex_app\"]\nenabled = false\ncommand = \"AXIWARD\\\\dist\\\\axiward-0.2.0\\\\axiward.exe\"\nargs = [\"--version\"]\n\n[mcp_servers.\"cua_repl\"]\nenabled = false\ncommand = \"AXIWARD\\\\dist\\\\axiward-0.2.0\\\\axiward.exe\"\nargs = [\"--version\"]\n\n[mcp_servers.\"node_repl\"]\nenabled = false\ncommand = \"AXIWARD\\\\dist\\\\axiward-0.2.0\\\\axiward.exe\"\nargs = [\"--version\"]\n\n[mcp_servers.\"openaiDeveloperDocs\"]\nenabled = false\nurl = \"https://disabled.invalid\"\n",
+  "rawRecord": ".work/native-isolation-release/repository-record.json",
+  "rawSha256": "46ceb2e2adb4b17bd1c5f3408deccbca99b92bfad98d299b50980b8ef45ab540"
+}
