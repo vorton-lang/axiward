@@ -1,4 +1,0 @@
-{"timestamp":"2026-09-17T16:21:26.013502Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
-{"timestamp":"2026-09-17T16:21:26.015704Z","level":"WARN","fields":{"message":"Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell"},"target":"codex_core::shell_snapshot"}
-{"timestamp":"2026-09-17T16:21:29.381805Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
-{"timestamp":"2026-09-17T16:21:32.240708Z","level":"WARN","fields":{"message":"recorded sandbox violation: resource=filesystem backend=windows_sandbox reason=operation_not_permitted path=unknown"},"target":"codex_sandboxing::violation"}

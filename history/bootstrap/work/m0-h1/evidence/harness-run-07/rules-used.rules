@@ -1,4 +1,0 @@
-prefix_rule(pattern=["LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe", ["status", "submit"]], decision="allow")
-prefix_rule(pattern=["LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe", "decide"], decision="forbidden", justification="Only the human entry may decide.")
-prefix_rule(pattern=["C:\\Program Files\\PowerShell\\7\\pwsh.exe"], decision="forbidden", justification="H1 rule-loading diagnostic only.")
-h1_intentionally_invalid_rule_syntax(

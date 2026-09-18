@@ -1,1 +1,0 @@
-def fakeSpecification : Prop := True

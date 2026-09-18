@@ -1,2 +1,0 @@
-Error loading rules:
-LEGACY_WORKSPACE\work\m0-h1\lab\view\.codex\rules\axiward-probe.rules:5: starlark error: error: Parse error: unexpected new line, expected expression (problem is on or around line 5)

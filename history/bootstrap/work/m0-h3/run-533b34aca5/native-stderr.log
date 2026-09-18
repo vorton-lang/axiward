@@ -1,4 +1,0 @@
-{"timestamp":"2026-09-17T17:13:19.510373Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
-{"timestamp":"2026-09-17T17:13:19.512447Z","level":"WARN","fields":{"message":"Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell"},"target":"codex_core::shell_snapshot"}
-{"timestamp":"2026-09-17T17:13:19.595766Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
-{"timestamp":"2026-09-17T17:13:21.026378Z","level":"WARN","fields":{"message":"MCP tool call error: \"tool call error: tool call failed for `axiward_h3/ask`\\n\\nCaused by:\\n    Transport closed\""},"target":"codex_core::mcp_tool_call"}

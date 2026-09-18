@@ -1,5 +1,0 @@
-{
-  "question": "Which candidate preserves FIFO under the current specification?",
-  "maxRuns": 2,
-  "stopWhen": "Compare at most two immutable candidates, then record observations and a next-step recommendation."
-}

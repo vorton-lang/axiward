@@ -1,7 +1,0 @@
-{
-  "status": "failed",
-  "userReplies": "simulated by trusted test client",
-  "questionContexts": [],
-  "targetThread": "01a0b05b-0a65-7dd3-a98b-e09ef4026d05",
-  "error": "AttributeError: nullable MCP _meta was read as a dictionary; the test client stopped before answering."
-}

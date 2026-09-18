@@ -1,1 +1,0 @@
-{"arguments":["env","lean","Audit.lean"],"cwd":"LEGACY_WORKSPACE\\work\\m0-l2\\runs\\sorry-proof-9965936410900\\snapshot","durationMs":1770,"exitCode":1,"stderr":"","stdout":"Audit.lean:7:0: error: UNAPPROVED_AXIOM: sorryAx\n"}

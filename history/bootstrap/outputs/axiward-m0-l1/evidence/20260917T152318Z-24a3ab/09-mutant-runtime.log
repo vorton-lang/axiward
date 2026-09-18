@@ -1,6 +1,0 @@
-created capacity=2 length=0
-enqueue alpha: accepted=true length=1 capacity=2
-enqueue beta: accepted=true length=2 capacity=2
-dequeue: value=beta length=1 capacity=2
-dequeue: value=alpha length=0 capacity=2
-dequeue: empty length=0 capacity=2

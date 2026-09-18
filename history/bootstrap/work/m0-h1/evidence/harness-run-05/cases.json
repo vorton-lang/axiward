@@ -1,7 +1,0 @@
-[
-  {
-    "command": "Write-Output H1_RULE_LOADING_MARKER",
-    "name": "rule-loading-marker",
-    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view"
-  }
-]

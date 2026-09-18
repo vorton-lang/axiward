@@ -1,1 +1,0 @@
-{"arguments":["env","lean","Audit.lean"],"cwd":"LEGACY_WORKSPACE\\work\\m0-l2\\runs\\extra-axiom-9960436224800\\snapshot","durationMs":1768,"exitCode":1,"stderr":"","stdout":"Audit.lean:7:0: error: UNAPPROVED_AXIOM: Axiward.trustMe\n"}

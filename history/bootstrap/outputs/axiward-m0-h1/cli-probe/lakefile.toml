@@ -1,7 +1,0 @@
-name = "axiward-h1-probe"
-version = "0.0.0"
-defaultTargets = ["axiward_probe"]
-
-[[lean_exe]]
-name = "axiward_probe"
-root = "Main"
