@@ -124,4 +124,4 @@ python experiments/windows-sandbox-concurrency.py --production-toolchain C:\Tool
 
 此模式通过同目录下的 `sandbox-startup.lean` 调用实际生产代码，测试父进程不加启动锁；它同时断言成功退出、执行时间重叠和权限结果。普通模式仍可独立复现未经过 Axiward 的 Codex 问题，复现时应与同一 Codex 环境中的其他沙箱任务错开。
 
-边界保持明确：该协调只覆盖 Axiward 核验调用，其他独立 Codex 进程不自动遵守，Codex 用户级共享缓存缺陷本身仍未修复。验证记录见[本轮摘要](../.work/sandbox-startup-fix-20260918/summary.md)。
+边界保持明确：该协调只覆盖 Axiward 核验调用，其他独立 Codex 进程不自动遵守，Codex 用户级共享缓存缺陷本身仍未修复。原始生产入口观测位于本机 `.work/sandbox-startup-production-20260918-final/`；这些可再生运行文件不入 Git，复验使用上面的独立入口。

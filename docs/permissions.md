@@ -1,6 +1,6 @@
 # 执行模式与检查范围
 
-当前 worker 使用用户批准的完全访问模式。Windows elevated 沙箱在拒绝项目根后，无法启动位于其内部的工作空间；因此保留普通仓库与 `.view/<包>/` 布局，以说明文档约束 worker，不再要求原生隔离。
+当前 worker 使用用户批准的完全访问模式。本机 Codex Windows elevated 沙箱在拒绝项目根后，启动内部工作空间时报 `CreateProcessWithLogonW failed: 267`；因此保留普通仓库与 `.view/<包>/` 布局，以说明文档约束 worker，不再要求原生隔离。这是已观察到的本机限制，不对所有 Codex 版本作结论。
 
 ## Worker 操作约定
 
