@@ -4,7 +4,7 @@
 
 当前支持 **Lean 有界 FIFO 队列**的两种登记规格：满时拒绝、满时覆盖最旧元素。控制流程已通过工程检查；真实 agent 自主推进仍待实战验证。
 
-按当前问题阅读：[从源码启动](#从源码启动) → [四类工作流程](#agent-的四条工作流程) → [暂停与变更](#暂停变更恢复) → [交付](#完成与交付)。规格见下节，具体操作按对应小节查阅。
+按当前问题阅读：[从发行目录启动](#从发行目录启动) / [从源码启动](#从源码启动) → [四类工作流程](#agent-的四条工作流程) → [暂停与变更](#暂停变更恢复) → [交付](#完成与交付)。规格见下节，具体操作按对应小节查阅。
 
 ## 队列规格
 
@@ -27,6 +27,25 @@
 4. 查看 `complete` 和交付清单，验收实际产品。
 
 你不用替 agent 写实现、证明或维护状态图。
+
+## 从发行目录启动
+
+在干净源码签出中运行 `python package_cli.py --toolchain <Lean完整目录> --output .work\axiward-cli-new`。输出包含独立 `axiward.exe`、两个适配器文件、两套登记策略、使用说明和文件 SHA-256/源码提交清单，使用时不需要源码签出。
+
+在发行目录打开 PowerShell：
+
+```powershell
+$app = (Get-Location).Path
+$cli = Join-Path $app 'axiward.exe'
+$lean = 'C:\Tools\lean-4.34.0-windows'
+$python = (Get-Command python).Source
+$repo = Join-Path $env:USERPROFILE 'AxiwardProjects\queue'
+$view = Join-Path $repo '.view\package-1'
+& $cli init $repo "$app\examples\fifo\policy" $lean
+& $cli session $repo $view $python "$app\adapter\server.py"
+```
+
+`$repo` 必须是新目录。本版不迁移此前没有 `source/` 的试验仓库，旧数据不会自动删除。Session 固定 exe、Python 和适配器的绝对路径，使用期间保留发行目录位置。后续 Codex 工作视图操作与下节相同。
 
 ## 从源码启动
 
@@ -55,7 +74,7 @@ $python = (Get-Command python).Source
 
 > 使用 Axiward 完成本包。先读取 status 和 handoff，自行选择节点与动作，再向 next 提供 node 和 action。按已核准的流程工作，需要我决定时通过 ask_user 询问。包结束后保存交接；后续新包使用新的工作空间。
 
-`$repo` 是人可以直接打开的项目根：`.git/` 保存 Git 数据，`.axiward/` 管理状态及正式成果随 Git 提交，`product/` 保留当前格式的根产物。`.gitignore` 排除 `/.view/`；每个包的工作空间是其中一个独立目录。控制端提交后同步普通签出文件，碰到会被覆盖的本地修改或未跟踪文件则拒绝继续，不丢弃草稿。若提交已记录而签出中断，后续写请求会先恢复签出；只读状态始终来自 Git 提交。
+`$repo` 是人可以直接打开的项目根：`.git/` 保存 Git 数据，`.axiward/` 管理状态及正式成果随 Git 提交，`source/` 保存正式共享源码，`product/` 保留当前格式的根产物。`.gitignore` 排除 `/.view/`；每个包的工作空间是其中一个独立目录。控制端提交后同步普通签出文件，碰到会被覆盖的本地修改或未跟踪文件则拒绝继续，不丢弃草稿。若提交已记录而签出中断，后续写请求会先恢复签出；只读状态始终来自 Git 提交。
 
 `.view/<包空间>/` 初始只有连接配置、说明和空的 `work/`、`tmp/`；领取后规格、目标、材料与候选才进入 `work/`。未提交草稿不由 Axiward 保证保存或恢复。受管项目的正式 Git 写入通过 Axiward，普通浏览无需控制入口。
 
@@ -86,7 +105,7 @@ $python = (Get-Command python).Source
 
 资料导出针对控制器已登记的资源目录，当前不是按任意仓库路径签出文件的接口。Worker 无需读取完整仓库。
 
-失败后用 `evidence` 读取原始诊断，领取新包再修改；同一个终稿不能反复覆盖。网络或进程中断后的 `resume` 只核验原终稿。重试同一请求要保持 `request_id` 和内容相同。
+失败后领取的新包会在 `handoff.diagnostics` 直接收到原始 Lean 诊断、可解析位置，以及消息中已有的未证明目标和局部前提；没有这些信息的输出不会补造。`checkedSnapshotResource` 指向实际被检源码及 gate，可能不同于封存原稿，`evidenceResource` 保留完整原始证据。交接读取不重跑核验；访问被撤销时明确报告缺失。领取新包再修改，同一个终稿不能反复覆盖。网络或进程中断后的 `resume` 保持原终稿，按最新正式源码重新合并核验。重试同一请求要保持 `request_id` 和内容相同。
 
 ### 探索模板
 
@@ -164,9 +183,17 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 
 需要撤回某项材料的后续导出权限：`access <repo> <请求ID> <资源ID或前缀> deny`；用 `allow` 恢复该条规则。已经导出的文件或进入上下文的内容不会被抹除。
 
+## 路线变更与共享源码
+
+路线变更后，Discussion agent 读取 `invalidatedPackages`，立即通过 Codex 停止其中各 owner 对应的 worker，再执行 `axiward reclaim <repo> <request-id> <node> <serial> <reason>` 回收包。控制端命令不在 worker 白名单内；回收不代替在途操作对账。仍被当前路线依赖的共享节点不会列为失效。
+
+源码和证明以包领取时的 `source/` 为固定基准。后交付包与最新源码三方合并，并核验新成果和当前全部已接纳保证。内容冲突或核验失败结束本包、保留原稿与原因，新包从最新源码继续；正式源码及已有成果保持不变。核验期间发生提交竞争则保留封存包，重试时重新合并核验。
+
+候选初始文件从固定基线填充，也遵守材料访问拒绝；`blockedSourceFiles` 列出未导出的文件。访问恢复后通过 `sourceResource` 取得该包的固定源码，不直接访问正式仓库。
+
 ## 完成与交付
 
-`rootClosed` 表示根目标有当前有效证明；`complete` 还要求当前路线没有活动包、没有未解决的在途实验。只有 `complete=true` 才能导出交付：
+`rootClosed` 表示根目标有当前有效证明；`complete` 还要求当前路线没有活动包、没有未解决的在途实验。条件满足就宣布完成，不等待旧路线 worker 停止或包回收。只有 `complete=true` 才能导出交付：
 
 ```powershell
 $delivery = Join-Path $app '.work\queue\delivered'

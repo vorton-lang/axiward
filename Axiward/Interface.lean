@@ -1,4 +1,5 @@
 import Axiward.Controller
+import Axiward.Diagnostics
 
 namespace Axiward.Interface
 
@@ -25,6 +26,7 @@ def status (loaded : Git.Loaded) : Json :=
     ("paused", toJson loaded.state.domain.workflow.paused),
     ("pauseReason", toJson loaded.state.domain.workflow.pauseReason),
     ("pendingOperations", toJson (pendingOperations loaded.state)),
+    ("invalidatedPackages", Controller.invalidatedPackages loaded.state),
     ("map", toJson (loaded.state.nodes.toList.zipIdx.map (fun (n, id) => mapNode loaded.state id n))),
     ("transitions", toJson loaded.state.journal.entries.length)]
 
@@ -121,7 +123,7 @@ def decisionContext (s : State) (node : Nat) (n : Node) (q : Decision) : Json :=
 
 def commandSerial : Axiward.Command → Option Nat
   | .submit serial _ | .finish serial _ _ | .finishRefinement serial _ _
-  | .cancel serial _ | .archive serial _ _ => some serial
+  | .cancel serial _ | .archive serial _ _ | .integrate serial _ _ => some serial
   | .workflow (.reject serial _) | .workflow (.prepare serial _)
   | .workflow (.launch serial _ _) | .workflow (.conclude serial _)
   | .workflow (.ask serial _) | .workflow (.answer serial _ _) => some serial
@@ -142,7 +144,7 @@ def attempts (s : State) (node : Nat) (snapshot : Option State) : List Json :=
             ("availableInInputSnapshot", toJson (snapshot.map (fun input => input.journal.entries.contains e)))]
         | .finishRefinement _ (.reused output) tree => [("evidence", toJson tree),
             ("sourceNode", toJson output.sourceNode), ("sourcePublication", toJson output.source)]
-        | .finish _ _ tree | .finishRefinement _ _ tree | .archive _ _ tree => [("evidence", toJson tree)]
+        | .finish _ _ tree | .finishRefinement _ _ tree | .archive _ _ tree | .integrate _ _ tree => [("evidence", toJson tree)]
         | .cancel _ reason => [("reason", toJson reason)]
         | .workflow (.conclude _ report) => [("report", toJson report),
             ("reportResource", toJson s!"current/node/{node}/report-{serial}")]
@@ -248,6 +250,7 @@ def handoff (loaded : Git.Loaded) (input : Option (Nat × State × String) := no
       ("stillCurrent", toJson (n.any (fun (original : Node) => s.nodes[node]?.any (fun (current : Node) =>
         original.domain.scope == current.domain.scope && scopeUsable s.nodes original.domain.scope))))]
   return Json.mkObj [("currentHead", toJson loaded.head), ("inputSnapshot", toJson frozen),
+    ("invalidatedPackages", Controller.invalidatedPackages s),
     ("contextComplete", toJson missing.isEmpty), ("blockedByMissingContext", toJson (!missing.isEmpty)),
     ("missing", toJson missing), ("paused", toJson s.domain.workflow.paused),
     ("pauseReason", toJson s.domain.workflow.pauseReason),
@@ -260,9 +263,6 @@ def handoff (loaded : Git.Loaded) (input : Option (Nat × State × String) := no
       "Only applicableNow decisions are current preferences, for their recorded node and scope; ancestor/dependency context grants no additional authority.",
       "Only the allocated owner may write to an active package. An ended attempt needs a new package for changes; resume only checks the original sealed candidate."])]
 
-def workerStatus (loaded : Git.Loaded) : Json :=
-  Json.mkObj [("status", status loaded), ("handoff", handoff loaded)]
-
 def rawEvidence (repo : FilePath) (tree : String) : IO String := do
   let names ← Git.checked repo #["ls-tree", "-r", "--name-only", tree]
   let mut records : List Json := []
@@ -274,17 +274,98 @@ def rawEvidence (repo : FilePath) (tree : String) : IO String := do
 
 def candidateRecords (repo : FilePath) (current : State) (node : Nat) (candidate : Candidate) : IO String := do
   let mut files : List Json := []
-  for path in ["Axiward/Queue.lean", "Axiward/Proofs.lean", "plan.json", "Refinement.lean",
-      "question.json", "exploration.json"] do
+  let entries ← Git.checked repo #["ls-tree", "-r", "-z", candidate.tree]
+  for entry in entries.splitOn "\x00" do
+    let [metadata, path] := entry.splitOn "\t" | continue
+    let [_, "blob", oid] := metadata.splitOn " " | continue
+    unless path.endsWith ".lean" || ["plan.json", "question.json", "exploration.json"].contains path do continue
     let name := (path.splitOn "/").getLast!
-    let resolved ← Git.call repo #["rev-parse", "--verify", s!"{candidate.tree}:{path}"]
-    if resolved.exitCode != 0 then continue
     -- Preserve exact old previous-file denials as well as the new package ID.
     let content ← if readable current s!"node/{node}/previous-{name}" then
-        pure (Json.mkObj [("raw", toJson (← Git.readBlob repo resolved.stdout.trimAscii.toString))])
+        pure (Json.mkObj [("raw", toJson (← Git.readBlob repo oid))])
       else pure (Json.mkObj [("unavailable", toJson "access revoked")])
     files := files ++ [Json.mkObj [("file", toJson path), ("content", content)]]
   return (toJson files).pretty
+
+private structure FailedCheck where
+  name : String
+  tree : String
+  submitted : Option Nat
+
+private def failedChecks (s : State) (node : Nat) : List FailedCheck :=
+  (s.journal.entries.filter (fun e => e.request.node == node)).zipIdx.filterMap fun (e, index) =>
+    let failed := match e.reply with
+      | .rejected _ _ | .unresolved _ _ | .compositionFailed _ | .archived _ => true
+      | _ => false
+    if !failed then none else
+    match e.request.command with
+    | .finish serial _ tree | .finishRefinement serial _ tree | .integrate serial _ tree | .archive serial _ tree =>
+      some ⟨s!"package-{serial}-evidence", tree, some serial⟩
+    | .compose _ _ tree => some ⟨s!"composition-{index}", tree, none⟩
+    | _ => none
+
+/-- The diagnostic input, rather than the current or submitted candidate, names
+    these files. Each source category retains the existing resource guard. -/
+private def checkedSnapshot (repo : FilePath) (current : State) (node : Nat) (diagnostic : Json) : IO Json := do
+  let checks := (diagnostic.getObjValAs? (List Json) "checks").toOption.getD []
+  let mut snapshots : List Json := []
+  for check in checks do
+    let some input := ((check.getObjVal? "input").bind (·.getObjVal? "record")).toOption | continue
+    let some candidate := (input.getObjValAs? Candidate "candidate").toOption | continue
+    let mut fields := [("input", input), ("candidateFiles", ← Git.decode (Json.parse
+      (← candidateRecords repo current node candidate)))]
+    if let some scope := (input.getObjValAs? Scope "scope").toOption then
+      for (resource, path) in [("goal", "Gate.lean"), ("spec", "Axiward/Spec.lean")] do
+        let value ← if readable current s!"node/{node}/{resource}" then
+            pure (toJson (← Git.readBlob repo (← Git.resolve repo s!"{scope.policy}:{path}")))
+          else pure (Json.mkObj [("unavailable", toJson "access revoked")])
+        fields := fields ++ [(path, value)]
+    snapshots := snapshots ++ [Json.mkObj fields]
+  return toJson snapshots
+
+def handoffWithDiagnostics (repo : FilePath) (loaded : Git.Loaded)
+    (input : Option (Nat × State × String) := none) : IO Json := do
+  let base := handoff loaded input
+  let contexts := (base.getObjValAs? (List Json) "contexts").toOption.getD []
+  let mut diagnostics : List Json := []
+  let mut missing := (base.getObjValAs? (List Json) "missing").toOption.getD []
+  for context in contexts do
+    let some node := (context.getObjValAs? Nat "node").toOption | continue
+    for failure in failedChecks loaded.state node do
+      let resource := s!"current/node/{node}/{failure.name}"
+      let snapshot := resource ++ "-checked-snapshot"
+      let mut fields := [("node", toJson node), ("evidenceResource", toJson resource),
+        ("checkedSnapshotResource", toJson snapshot),
+        ("submittedCandidateResource", toJson (failure.submitted.map (fun serial => s!"node/{node}/package-{serial}-candidate")))]
+      if readable loaded.state resource && readable loaded.state s!"node/{node}/history" then
+        fields := fields ++ [("diagnostic", ← Diagnostics.read repo failure.tree resource)]
+      else
+        fields := fields ++ [("unavailable", toJson "access revoked")]
+        missing := missing ++ [Json.mkObj [("resource", toJson resource),
+          ("reason", toJson "failure evidence is inaccessible")]]
+      diagnostics := diagnostics ++ [Json.mkObj fields]
+  return base.setObjVal! "diagnostics" (toJson diagnostics)
+    |>.setObjVal! "missing" (toJson missing)
+    |>.setObjVal! "contextComplete" (toJson missing.isEmpty)
+    |>.setObjVal! "blockedByMissingContext" (toJson (!missing.isEmpty))
+
+def workerStatus (repo : FilePath) (loaded : Git.Loaded) : IO Json := do
+  return Json.mkObj [("status", status loaded), ("handoff", ← handoffWithDiagnostics repo loaded)]
+
+private def failedSnapshotResources (repo : FilePath) (current snapshot : State) (node : Nat)
+    (resourcePrefix : String) (wanted : String → Bool) : IO (List Resource) := do
+  let mut result := []
+  for failure in failedChecks snapshot node do
+    let evidence := s!"{resourcePrefix}node/{node}/{failure.name}"
+    let id := evidence ++ "-checked-snapshot"
+    if readable current id && readable current evidence && readable current s!"node/{node}/history" &&
+        failure.submitted.all (fun serial => readable current s!"node/{node}/package-{serial}-candidate") then
+      let content ← if wanted id then do
+          let diagnostic ← Diagnostics.read repo failure.tree evidence
+          pure (← checkedSnapshot repo current node diagnostic).pretty
+        else pure ""
+      result := result ++ [⟨id, "Actual failed verification input: candidate files and registered goal; sealed submission may differ", content⟩]
+  return result
 
 def packageRecords (repo : FilePath) (s : State) (node serial : Nat) : IO (List Json) := do
   let some n := s.nodes[node]? | throw (IO.userError "unknown node")
@@ -292,6 +373,8 @@ def packageRecords (repo : FilePath) (s : State) (node serial : Nat) : IO (List 
   for entry in s.journal.entries do
     if entry.request.node != node then continue
     match entry.request.command with
+    | .integrate ticket check tree =>
+      if ticket == serial then records := records ++ [Json.mkObj [("merge", toJson check), ("raw", toJson (← rawEvidence repo tree))]]
     | .finish ticket verdict tree =>
       if ticket == serial then records := records ++ [Json.mkObj [("verdict", toJson verdict), ("raw", toJson (← rawEvidence repo tree))]]
     | .finishRefinement ticket verdict tree =>
@@ -317,7 +400,13 @@ def resources (repo : FilePath) (loaded : Git.Loaded) (owner : String) (node ser
   let head ← packageSnapshot repo loaded node serial
   let snapshot ← snapshotState repo head
   let mut result : List Resource := []
+  if let some source := sourceAt snapshot.journal.entries then
+    let id := s!"node/{node}/source"
+    if readable current id then
+      let content ← if contentWanted id then candidateRecords repo current node source else pure ""
+      result := result ++ [⟨id, "Shared source fixed at this package's acquisition; file permissions still apply", content⟩]
   for (n, i) in snapshot.nodes.toList.zipIdx do
+    result := result ++ (← failedSnapshotResources repo current snapshot i "" contentWanted)
     let add (name description content : String) : List Resource :=
       let id := s!"node/{i}/{name}"
       if readable current id then [⟨id, description, content⟩] else []
@@ -360,6 +449,7 @@ def resources (repo : FilePath) (loaded : Git.Loaded) (owner : String) (node ser
   -- Live records are named separately from frozen inputs. They use the same
   -- resource permissions; a current/ alias cannot bypass a node/ denial.
   for i in packageContextNodes current snapshot node do
+    result := result ++ (← failedSnapshotResources repo current current i "current/" contentWanted)
     let some n := current.nodes[i]? | continue
     let history := current.journal.entries.filter (fun e => e.request.node == i)
     let historyId := s!"current/node/{i}/history"
@@ -387,9 +477,9 @@ def viewDirectory (root : FilePath) (_node _serial : Nat) : FilePath := root / "
 
 def actionGuide : Action → String
   | .execute =>
-    "# Execute\n\nRead Spec.lean, Goal.lean and claims.json. Write candidate/Queue.lean and candidate/Proofs.lean. The controller mounts them as Axiward.Queue and Axiward.Proofs alongside the frozen Axiward.Spec. Proofs.lean should import Axiward.Queue and Axiward.Spec and define the exact theorem names/types shown in Goal.lean (in namespace Axiward). Implement the API referenced by those predicates; no sorry, added axioms, unsafe or runtime replacements.\n\nSubmit once with submit. A rejection ends the package: read evidence.json and continue in a new session. Resume only continues a sealed check. Exploration requires a separate explore package. Child proof files should normally contain only the assigned claims so distinct modules do not redefine the same declarations.\n"
+    "# Execute\n\nRead Spec.lean, Goal.lean and claims.json. Write candidate/Queue.lean and candidate/Proofs.lean. They start from the shared source at package acquisition when one exists. Your sealed submission is kept unchanged; the controller merges it with the latest source and checks the merged snapshot against this goal and every current accepted guarantee. The controller mounts them as Axiward.Queue and Axiward.Proofs alongside the frozen Axiward.Spec. Proofs.lean should import Axiward.Queue and Axiward.Spec and define the exact theorem names/types shown in Goal.lean (in namespace Axiward). Implement the API referenced by those predicates; no sorry, added axioms, unsafe or runtime replacements.\n\nSubmit once with submit. A rejection ends the package: read evidence.json and continue in a new session. Resume only continues a sealed check. Exploration requires a separate explore package. Preserve the baseline declarations and proofs when adding your assigned claims; every current accepted guarantee must still hold on the merged source. After failure, handoff.diagnostics provides the retained Lean messages and a checkedSnapshotResource for the actual tested code. If source initialization reports blockedSourceFiles, restore access and read sourceResource before continuing.\n"
   | .refine =>
-    "# Refine\n\nWrite candidate/plan.json. Fresh children are arrays of clause indices from claims.json; they must be nonempty, disjoint and cover the parent. Existing nodes use {\"reuse\": nodeId}. Example for the full root:\n\n```json\n{\"children\":[[0,1,2],[3,4,5]],\"direct\":false}\n```\n\nOptionally set \"implementation\" to a child SLOT (0-based, not a node ID) when combining different implementations. All proofs are rechecked against that chosen implementation. Without it, child implementations must have identical content.\n\nWrite candidate/Refinement.lean:\n\n```lean\nimport Plan\nnamespace Refinement\ntheorem valid (facts : Nat → Prop) :\n    (∀ child ∈ Plan.children, Holds child facts) → Holds Plan.parent facts := by\n  simp_all [Plan.children, Plan.parent, Holds, and_assoc]\nend Refinement\n```\n\nThe controller generates Plan and Holds from the sealed plan and current parent. You cannot replace those inputs. Submit once. To restore direct implementation while leaving the goal open, use {\"direct\":true}. For an already admitted historical product use {\"result\":{\"node\":nodeId,\"receipt\":\"receipt hash\"}}; it must match this exact goal. Search the snapshot history for available nodes and receipts.\n"
+    "# Refine\n\nWrite candidate/plan.json. Fresh children are arrays of clause indices from claims.json; they must be nonempty, disjoint and cover the parent. Existing nodes use {\"reuse\": nodeId}. Example for the full root:\n\n```json\n{\"children\":[[0,1,2],[3,4,5]],\"direct\":false}\n```\n\nImplementation and proof changes enter the shared source through three-way merging and joint verification. The parent checks that shared source; implementation child selection is unavailable.\n\nWrite candidate/Refinement.lean:\n\n```lean\nimport Plan\nnamespace Refinement\ntheorem valid (facts : Nat → Prop) :\n    (∀ child ∈ Plan.children, Holds child facts) → Holds Plan.parent facts := by\n  simp_all [Plan.children, Plan.parent, Holds, and_assoc]\nend Refinement\n```\n\nThe controller generates Plan and Holds from the sealed plan and current parent. You cannot replace those inputs. Submit once. To restore direct implementation while leaving the goal open, use {\"direct\":true}. For an already admitted historical product use {\"result\":{\"node\":nodeId,\"receipt\":\"receipt hash\"}}; it must match this exact goal. Search the snapshot history for available nodes and receipts.\n"
   | .explore =>
     "# Explore\n\nWrite candidate/exploration.json:\n\n```json\n{\"question\":\"What uncertainty blocks this goal?\",\"maxRuns\":2,\"stopWhen\":\"Compare at most two candidates, then report a next step\"}\n```\n\nCall prepare before any experiment. maxRuns is 0..8; zero permits analysis without project execution. R0 permits only the registered checker applied to immutable candidates. Write Queue.lean and Proofs.lean under trials/<name>/; experiment accepts that simple name, never arbitrary commands. Each call consumes one admitted run. A lost response is not permission to run again: retry the SAME request ID for status, or ask the user to reconcile the outstanding operation.\n\nUse evidence to inspect raw observations. External research and reasoning may inform your report, but citations and interpretations are not machine facts. Finish candidate/report.md with observations, interpretation and next-step recommendation kept distinct, then call conclude. No findings is also a valid conclusion. All in-flight operations must first be reconciled. Neither a passing trial nor a report closes this product goal.\n"
   | .requestDecision =>
@@ -403,6 +493,7 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
     throw (IO.userError "workspace is bound to another package; create a new session")
   let directory := viewDirectory root node serial
   let candidate := directory / "candidate"
+  let initializeCandidate := !(← candidate.pathExists)
   IO.FS.createDirAll candidate
   let catalog ← resources repo loaded owner node serial (fun id =>
     [s!"node/{node}/spec", s!"node/{node}/claims", s!"node/{node}/goal"].contains id)
@@ -414,6 +505,17 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
     if n.domain.active.any (fun a => a.serial == serial) then phaseName n.domain else "ended")).getD "ended"
   let head ← packageSnapshot repo loaded node serial
   let snapshot ← snapshotState repo head
+  let mut blockedSourceFiles : List String := []
+  if initializeCandidate && p.action == .execute then
+    if let some source := sourceAt snapshot.journal.entries then
+      for name in Verifier.candidateFiles do
+        let resource := s!"node/{node}/previous-{name}"
+        unless readable loaded.state resource && readable loaded.state s!"node/{node}/source" do
+          blockedSourceFiles := blockedSourceFiles ++ [resource]
+          continue
+        let blob ← Git.call repo #["rev-parse", "--verify", s!"{source.tree}:Axiward/{name}"]
+        if blob.exitCode == 0 then
+          IO.FS.writeFile (candidate / name) (← Git.readBlob repo blob.stdout.trimAscii.toString)
   let mut extra : List (String × Json) := []
   if includeEvidence then
     if readable loaded.state s!"node/{node}/package-{serial}-evidence" then
@@ -424,6 +526,9 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
     else extra := [("evidence", Json.mkObj [("unavailable", toJson "access revoked")])]
   let summary := Json.mkObj ([("node", toJson node), ("serial", toJson serial),
     ("action", toJson p.action), ("snapshot", toJson head),
+    ("sourceBase", toJson (sourceAt snapshot.journal.entries)),
+    ("sourceResource", toJson s!"node/{node}/source"),
+    ("blockedSourceFiles", toJson blockedSourceFiles),
     ("guide", toJson (directory / "ACTION.md").toString),
     ("goal", toJson (directory / "Goal.lean").toString),
     ("phase", toJson currentPhase),
@@ -431,7 +536,7 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
     ("candidateDirectory", toJson candidate.toString),
     ("resources", toJson (catalog.map (fun r => Json.mkObj [("id", toJson r.id), ("description", toJson r.description)]))),
     ("status", status loaded),
-    ("handoff", handoff loaded (some (node, snapshot, head)))] ++ extra)
+    ("handoff", ← handoffWithDiagnostics repo loaded (some (node, snapshot, head)))] ++ extra)
   IO.FS.writeFile (directory / "view.json") summary.pretty
   IO.FS.writeFile (directory / "ACTION.md") (actionGuide p.action)
   IO.FS.writeFile (directory / "WORK.md")
@@ -457,7 +562,7 @@ private def nextUnlocked (repo root : FilePath) (id owner : String) (selection :
       throw (IO.userError "workspace already belongs to another package; use a new session for new work")
     return ← exportViewLoaded repo root loaded owner node serial true
   if complete loaded.state || loaded.state.domain.workflow.paused then
-    return workerStatus loaded
+    return ← workerStatus repo loaded
   let some (node, action) := selection
     | throw (IO.userError "choose a node and action from status and handoff before requesting a new package")
   let reply ← Git.transact repo ⟨id, .controller, .begin owner action, node⟩
@@ -552,9 +657,9 @@ def session (repo view python adapter : FilePath) : IO Json := do
     s!"[mcp_servers.axiward]\ncommand = {(toJson python.toString).compress}\nargs = {(toJson argv).compress}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n"
   IO.FS.writeFile (view / ".codex" / "config.toml") config
   IO.FS.writeFile (view / "AGENTS.md")
-    "# Axiward worker\n\nThis task uses the current user-approved full-access mode. The workspace rules below are operating instructions, not OS-enforced isolation.\n\nUse the Axiward MCP tools for all project state changes and project materials. First read status and its complete handoff, choose a node and one of the four actions, then call next with explicit node and action. Read the returned handoff and ACTION.md. In an already bound workspace, next without a choice recovers the same package. This workspace binds to its first package. Write candidates only in this package's work/ area; temporary external research files belong in tmp/. Do not directly read other package spaces, change the formal project files or Git state, alter the controller or adapter, edit the session configuration, or invoke admin commands. External research remains available.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package, new work requires a new session in another .view/ workspace. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. Every new package uses a separate workspace and session identity. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over through the Axiward tools. Never self-approve user questions. Completion requires status.complete=true.\n"
+    "# Axiward worker\n\nThis task uses the current user-approved full-access mode. The workspace rules below are operating instructions, not OS-enforced isolation.\n\nUse the Axiward MCP tools for all project state changes and project materials. First read status and its complete handoff, choose a node and one of the four actions, then call next with explicit node and action. Read the returned handoff and ACTION.md. In an already bound workspace, next without a choice recovers the same package. This workspace binds to its first package. Write candidates only in this package's work/ area; temporary external research files belong in tmp/. Do not directly read other package spaces, change the formal project files or Git state, alter the controller or adapter, edit the session configuration, or invoke admin commands. External research remains available.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package, new work requires a new session in another .view/ workspace. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. Every new package uses a separate workspace and session identity. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over through the Axiward tools. Never self-approve user questions. If invalidatedPackages lists your owner, stop generating work and report it to the discussion agent; you may cancel only your own package. Completion requires status.complete=true, regardless of obsolete workers still awaiting reclamation.\n"
   IO.FS.writeFile (view / "START.md")
-    "# Start here\n\nOpen this workspace in Codex and trust its containing project so the generated configuration is loaded. Confirm the Axiward MCP tools are available. This is the current user-approved full-access mode: workspace restrictions are instructions, not an operating-system sandbox guarantee. Keep the generated approval policy so registered questions can use the independent user channel.\n\nAsk the agent: ‘Read status and handoff, choose a node and action, pass both to next, and work through that package. Write candidates only in your package workspace. Use Axiward for project changes; do not directly alter the formal repository, Git state, controller or other package spaces. Ask me when a registered decision needs an answer.’\n\nOnly this project uses the generated configuration. Restart the task after setup. This initially empty workspace binds to one package on its first allocation. Start each new package with another session under the project .view/ directory. To recover an existing active package, reopen its owning view and call next without a new choice; prior conversation context is unnecessary. Packages never expire.\n"
+    "# Start here\n\nOpen this workspace in Codex and trust its containing project so the generated configuration is loaded. Confirm the Axiward MCP tools are available. This is the current user-approved full-access mode: workspace restrictions are instructions, not an operating-system sandbox guarantee. Keep the generated approval policy so registered questions can use the independent user channel.\n\nAsk the agent: ‘Read status and handoff, choose a node and action, pass both to next, and work through that package. Write candidates only in your package workspace. Use Axiward for project changes; do not directly alter the formal repository, Git state, controller or other package spaces. Ask me when a registered decision needs an answer.’\n\nOnly this project uses the generated configuration. Restart the task after setup. This initially empty workspace binds to one package on its first allocation. Start each new package with another session under the project .view/ directory. To recover an existing active package, reopen its owning view and call next without a new choice; prior conversation context is unnecessary. Packages never expire.\n\nDiscussion agent: after every route change, read invalidatedPackages in the returned handoff or overview. Immediately stop each listed owner through Codex, then call the controller CLI reclaim with its node and serial. Reclaim releases occupancy but does not settle registered in-flight operations; reconcile those only after their execution has stopped. Axiward reports invalidation and does not manage Codex processes.\n"
   return Json.mkObj [("view", toJson view.toString), ("worker", toJson worker),
     ("configuration", toJson (view / ".codex" / "config.toml").toString),
     ("message", toJson "Open this workspace in its trusted Codex project using the generated full-access configuration. Workspace limits are instructions; no global configuration changed.")]

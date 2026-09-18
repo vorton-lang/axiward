@@ -62,9 +62,8 @@ def audit : String :=
 def reuseResult (repo : FilePath) (scope : Scope) (proposal : Candidate)
     (source : ReuseSource) (state : State) : IO Result := do
   let publication := state.journal.entries.findSome? fun entry => do
-    if entry.request.node != source.node then none else do
-      let p ← admittedPublication entry
-      if p.receipt == source.receipt then some p else none
+    let result ← (admissions entry).find? (fun r => r.node == source.node && r.publication.receipt == source.receipt)
+    return result.publication
   let reject (reason : String) : IO Result := do
     let log ← Git.hashText repo (Json.mkObj [("scope", toJson scope),
       ("proposal", toJson proposal), ("source", toJson source), ("reason", toJson reason)]).compress
@@ -100,6 +99,8 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
   let input ← Git.hashText repo (Json.mkObj [("scope", toJson scope),
     ("candidate", toJson candidate), ("plan", toJson plan), ("controller", toJson controller)]).compress
   evidence := evidence.push ⟨"input.json", input⟩
+  if plan.implementation.isSome then
+    return ← retain evidence (.rejected "shared source merging does not select a child implementation")
   if let some source := plan.result then
     unless plan.children.isEmpty && !plan.direct && plan.implementation.isNone do
       return ← retain evidence (.rejected "result reuse cannot also replace child routes")
@@ -188,44 +189,5 @@ def check (repo : FilePath) (scope : Scope) (candidate : Candidate) (state : Sta
     for name in #["input.json", "01-build.json", "02-audit.json", "03-replay.json"] do
       if ← (work / name).pathExists then logs := logs.push ⟨name, ← Git.hashFile repo (work / name)⟩
     return ⟨.unknown "refinement checker could not complete; see evidence", ← Git.tree repo none logs⟩
-
-/-- An explicit source permits rebinding retained proofs to that implementation.
-    The parent verifier must then prove the full current goal for the actual assembled code. -/
-def assemble (repo : FilePath) (scope : Scope) (route : Route) (children : List ChildResult) : IO Candidate := do
-  let mut queue : Option String := none
-  let mut blobs : Array Git.Blob := #[]
-  let mut imports := ""
-  let mut importedProofs : List String := []
-  if let some selected := route.implementation then
-    let some child := children[selected]? | throw (IO.userError "invalid implementation source")
-    let implementation ← Git.resolve repo s!"{child.publication.product}:Axiward/Queue.lean"
-    queue := some implementation
-    blobs := blobs.push ⟨"Axiward/Queue.lean", implementation⟩
-  for child in children do
-    unless compatible child.publication.scope scope do
-      throw (IO.userError "child requirements are incompatible with the current parent")
-    let product := child.publication.product
-    let implementation ← Git.resolve repo s!"{product}:Axiward/Queue.lean"
-    if let some expected := queue then
-      if route.implementation.isNone && implementation != expected then
-        throw (IO.userError "child proofs describe different queue implementations; an explicit source and recheck are required")
-    else
-      queue := some implementation
-      blobs := blobs.push ⟨"Axiward/Queue.lean", implementation⟩
-    let moduleName := s!"Axiward.Parts.N{child.node}"
-    let proof ← Git.resolve repo s!"{product}:Axiward/Proofs.lean"
-    -- Identical proof modules need one import, even when independently admitted
-    -- children use the same complete file. The parent gate still checks all goals.
-    unless importedProofs.contains proof do
-      importedProofs := importedProofs ++ [proof]
-      blobs := blobs.push ⟨s!"Axiward/Parts/N{child.node}.lean", proof⟩
-      imports := imports ++ s!"import {moduleName}\n"
-    let files := (← Git.checked repo #["ls-tree", "-r", "--name-only", product, "--", "Axiward/Parts"]).splitOn "\n"
-    for path in files do
-      if !path.isEmpty then blobs := blobs.push ⟨path, ← Git.resolve repo s!"{product}:{path}"⟩
-  unless queue.isSome do throw (IO.userError "no child implementations")
-  blobs := blobs.push ⟨"Axiward/Proofs.lean", ← Git.hashText repo imports⟩
-  blobs := blobs.push ⟨"submission.json", ← Git.hashText repo "{\"format\":\"axiward-composition-v1\"}\n"⟩
-  return ⟨← Git.tree repo none blobs⟩
 
 end Axiward.Refinement

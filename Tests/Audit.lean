@@ -38,6 +38,9 @@ run_cmd do
 #print axioms Axiward.pause_blocks_new_package
 #print axioms Axiward.launch_requires_admitted_plan
 #print axioms Axiward.complete_requires_proof_and_settlement
+#print axioms Axiward.rechecks_cover_required
+#print axioms Axiward.rechecks_bind_merged_candidate
+#print axioms Axiward.integrated_passed_requires_rechecks
 #print axioms Axiward.launch_within_budget
 #print axioms Axiward.applicable_answer_binding
 #print axioms Axiward.replay_preserves_state

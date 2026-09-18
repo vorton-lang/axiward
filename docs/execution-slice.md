@@ -20,19 +20,19 @@ flowchart TD
 | `Transition.lean`、`Proofs.lean` | 单节点转换及其证明。 |
 | `Workflow.lean` | 探索、在途操作、用户决定、暂停和访问规则的纯转换与证明。 |
 | `Engine.lean` | 多节点转换、图不变量、请求去重和历史回放。 |
-| `Git.lean` | 完整快照、对象绑定检查、私有索引和分支比较交换。 |
+| `Git.lean` | 完整快照、对象绑定检查、源码树三方合并、私有索引和分支比较交换。 |
 | `FifoPolicy.lean`、`Verifier.lean` | 从 Q0 六项要求构造核验目标，核验实际程序。 |
-| `Refinement.lean` | 核验拆分关系，组装已核验源码。 |
+| `Refinement.lean` | 核验拆分关系与历史成果的接纳身份/适用性。 |
 | `Controller.lean` | 调用核验器、自动向父目标传播、处理重试。 |
 | `FlowIO.lean` | 流程候选、实验登记、原生记录接纳与对账。 |
-| `Interface.lean` | 明确选择后的工作包领取、固定快照视图、材料检索、原始诊断与交付。 |
+| `Interface.lean` / `Diagnostics.lean` | 固定快照视图、材料访问守卫、失败原始诊断及实际被检源码交接、交付。 |
 | `Main.lean` | 受信控制端 CLI。 |
 
 上述模块均在 `Axiward/` 下，`Main.lean` 位于仓库根目录。
 
 每个节点至多一个活动包，不同节点独立占用。动作固定为四种之一；阶段由封存状态及已准入的探索、待决定记录共同导出。没有过期回收。探索原语限定为登记的 FIFO 候选核验；纯分析可以用零次实验预算。用户问题目前只产生版本绑定的偏好，根变更仍走单独的用户确认命令。
 
-普通执行仍调用已证明的 `run`。项目转换通过 `runGraph` 计算候选，再检查节点、边和成果依赖；只有满足 `GraphIntegrity` 才能构造正式状态。Git 保存初始规格与逐次转换记录，恢复时重新执行转换并核对结果，没有另一份可单独改写的当前状态缓存。
+基础单节点转换保留 `run` 的证明；共享源码接纳由 `integrateNode` 核对全部复核凭据。项目转换通过 `runGraph` 计算候选，再检查节点、边和成果依赖；只有满足 `GraphIntegrity` 才能构造正式状态。Git 保存初始规格与逐次转换记录，恢复时重新执行转换并核对结果，没有另一份可单独改写的当前状态缓存。
 
 ## 规则与证明对应
 
@@ -56,6 +56,7 @@ flowchart TD
 | 转换保留已有历史 | S5 | `Change.historyPrefix`、`step_preserves_history` |
 | 当前成果的规格依赖符合最新根 | G3、T17 | `published_requirements_current` |
 | 失效传播不改写包编号和活动包快照 | S3、T17 | `normalize_preserves_packages` |
+| 合并复核覆盖全部当前成果，并绑定同份实际候选与各自范围 | P2 | `integrated_passed_requires_rechecks`、`rechecks_cover_required`、`rechecks_bind_merged_candidate` |
 | 历史复用只引用正式接纳过的结果 | T7 | `priorAdmission`、`priorAdmission_iff`，由 `step` 强制检查 |
 
 这些证明与构造约束覆盖上述实际实现；并非对任意依赖分析、任意外部副作用或操作系统权限的证明。预算、具体实验准入、用户答复适用性和完整交付条件由对应的纯转换守卫实施，跨流程检查验证它们的组合；上表仅列出已实际陈述并核验的定理。`Tests/Audit.lean` 检查内核声明的公理和运行实现替换；另用 `leanchecker Axiward` 复查本地模块。定理使用 Lean 的标准公理 `propext`、`Quot.sound`、`Classical.choice`，没有 `sorry`。
@@ -70,7 +71,7 @@ flowchart TD
 
 当前 FIFO 接入将六项要求分成非空、不重叠的组。子项可以是新目标，也可以用 `{"reuse": 节点编号}` 引用已有目标。系统核对被引用目标的版本与要求；允许引用较早的节点，但计算图的层次并检查每条边下降，以拒绝循环。
 
-默认组合仍要求相同实现。需要把保留的证明材料用于新实现时，精化方案必须用 `implementation` 指定一个子项的位置作为实现来源；系统会把所有证明源码放到该实现下重新核验父目标。选错实现会导致组合失败，不能把旧证书直接当成新程序的证明。
+执行成果先三方合入 `source/`。控制器按当前路线选出全部已接纳目标，将它们与新目标的条款组成联合 gate，实际构建、审计、重放同份合并候选；已有成果的凭据一起更新。未完成目标不加入联合 gate。父组合直接核验共享源码；`implementation` 子实现选择明确拒绝，旧的独立证明模块拼装器已删除。
 
 初始化和变更严格匹配两个已登记根策略（忽略换行格式和首尾空白）：Q0 满时拒绝，以及验收用的“满时替换最旧元素”版本。容量为零仍拒绝。不支持的规格不会被悄悄替换；导入 Git 后再次核对实际内容。
 
@@ -86,7 +87,7 @@ flowchart TD
 
 历史产物复用同样属于精化。结果包可提供 `{"result":{"node": 原节点,"receipt":"原凭据ID"}}`，不同时提供子项或直接路线。控制端和内核都要求它来自历史上真正接纳的结果；仅检查通过但最终被拒绝的尝试不算接纳。
 
-历史结果必须具有完全相同的已核验规格、策略和依赖，允许操作版本号不同。条件满足时接纳原产物并生成新绑定凭据，原源码、证明和二进制不重建。规格不同必须重新核验，不能用历史复用绕过新要求。
+历史结果必须具有完全相同的已核验规格、策略和依赖，允许操作版本号不同。条件满足后，历史源码仍须进入同一共享合入与联合核验路径，生成绑定实际合并结果的新凭据。历史接纳身份本身不能证明这份源码与当前其他成果共同成立，不能用历史复用绕过新要求。
 
 ## Git 中保存什么
 
@@ -102,7 +103,7 @@ flowchart TD
 
 这些内容共用 `main` 的 Git 历史，旧路线和旧产物由历史提交保留。每次写入使用私有索引构造完整树，再比较旧提交更新引用；冲突后按最新状态重新检查。只改变状态时保留无关源码。
 
-恢复同时检查规格、候选、精化凭据和交付物的实际对象摘要。普通仓库的 `.git/axiward-work/` 保存私有索引等临时文件，核验副本位于仓库旁的 `<repo>.checks/`；二者不参与正式状态判断。
+恢复同时检查规格、封存候选、正式 `source/`、精化凭据和交付物的实际对象摘要。普通仓库的 `.git/axiward-work/` 保存私有索引等临时文件，核验副本位于仓库旁的 `<repo>.checks/`；二者不参与正式状态判断。
 
 当前持久化协议为 schema 3；程序明确拒绝加载 schema 1、2，不自动改写旧记录。
 
@@ -122,56 +123,41 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 动作参数支持 `execute`、`refine`、`explore`、`requestDecision`。根编号为 `0`，各节点的工作包独立从 `0` 开始。完整用户命令见 `--help`，worker 工具与文件格式见产品说明。
 
-基线策略和候选在 `examples/fifo/policy`、`candidate`；变更验收版本在 `policy-overwrite`、`candidate-overwrite`。精化候选在 `examples/fifo/refinement`；集成检查从完整候选中提取所需的分组证明。
+基线策略和候选在 `examples/fifo/policy`、`candidate`；变更验收版本在 `policy-overwrite`、`candidate-overwrite`。精化候选在 `examples/fifo/refinement`；合入边界使用只覆盖已完成子项的候选，确认未完成条款不会被提前要求。
 
 身份由受信调用方填写；CLI 是控制端接口，身份字符串本身不提供认证。薄 MCP 适配器在启动时绑定 worker 身份、仓库和视图；工具白名单不提供 `revise`、`decide` 或原始观测登记。用户答复来自原生 MCP elicitation 响应或独立用户终端。模型没有自填“通过”来发布成果的命令。
 
 ## 验证与边界
 
-用户要求每项检查不超过 30 秒；超限项必须优化或删除，覆盖取舍不明时交用户审核。检查分层方案已批准并在实施。下表是重整前已有短检查的最后通过记录；新边界入口的最终覆盖与耗时需在实施完成后更新，不能据旧记录宣称新改动已经全部通过。
+每项检查含准备不超过 30 秒，超时属于失败，不能计为性能达标。以下是当前共享源码实现的实测；证据保留于 `.work/cli-*`，不入 Git、不自动清理。
 
-| 检查 | 独立覆盖 | 秒 |
+| 检查 | 实际边界 | 秒 |
 | --- | --- | ---: |
-| `Tests/Audit.lean` | 内核声明没有 `sorry` 或额外公理。 | 5.96 |
-| `leanchecker Axiward` | 独立重放已编译证明。 | 4.33 |
-| `workflow_scenarios` | 纯状态异常、预算、迟到结果、重放及交接作用域。 | 0.17 |
-| `store_scenarios` | 真实 Git 的 CAS、幂等、源码保留、封存恢复与日志篡改拒绝。 | 12.80 |
-| `Tests/status_snapshot.py` | 实际提交穿插在读取之间，响应仍对应同一版本；读取不消费状态。 | 7.05 |
-| `Tests/handoff.py` | 显式领取、结束包不复活、新 worker 获得拒绝原因与不可变旧候选。 | 24.38 |
-| `Tests/native.py` | 实际 Codex MCP 路由、独立用户问答、答复持久化与交接。 | 24.00 |
+| `Tests/Audit.lean` | 2166 个内核声明的公理/实现替换审计，无 sorry 或额外公理。 | 5.199 |
+| `leanchecker Axiward` | 独立重放已编译证明。 | 4.304 |
+| `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 |
+| `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 |
+| `integration.py --case accepted` | 实际 Lean 构建、审计、证明重放、接纳、导出并运行。 | 23.593 |
+| `integration.py --case merged` | 真实三方合并与联合数学核验，双方源码保留、旧凭据更新、未完成条款不加入。前置已接纳记录为夹具。 | 27.500 |
+| `integration.py --case merge-breaks-prior` | B 的新目标之外，删除 A 的已接纳保证会被实际 Lean 拒绝；旧源码/成果不变。前置记录为夹具。 | 15.594 |
+| `integration.py --case assembled` | 夹具提供子成果，生产控制器实际核验共享源码的父目标并运行交付物。 | 25.359 |
+| `integration.py --case merge-conflict` | 真实 Git 内容冲突，结束包并保留原稿；不运行数学核验。 | 11.829 |
+| `integration.py --case merge-race` | 真实 Git/CAS 拒绝旧 HEAD 的结果并保留封存包；结果本身为协议夹具。 | 13.641 |
+| `workflow.py --case route` | 路线失效报告保留共享节点，真实 CLI 回收指定包；状态证明值为夹具。 | 6.047 |
+| 独立发行目录预验 | 脱离源码及 Lean/Python 环境的 exe 启动、两套策略初始化、session、真实适配器 stdio 的 status/next/cancel；没有原生 Codex 路由或模型轮次。 | 16.172 |
+| `diagnostic_handoff.py --case acquisition` | 新包直接收到真实失败诊断；原稿与实际合并源码区分正确，完整原始证据可读。 | 13.063 |
+| `diagnostic_handoff.py` 访问拒绝 | evidence/history/candidate/previous-file/initial-source 各独立调用；current 别名无旁路、首次源码填充不绕过拒绝、恢复后仍读取固定基线。 | 14.344 / 14.453 / 12.328 / 11.890 / 12.297 |
+| `Tests/Diagnostics.lean` | 真实 Git 证据中的完整诊断、实际合并输入、位置、目标/前提及缺失信息；消息为协议夹具。 | 3.487 |
 
-快照与交接检查删除了重复的完整流程准备；状态组合仍由已有 Lean 纯检查覆盖。Python 功能检查设有整体时间预算，超时会失败，不算通过。原生问答由测试客户端明确模拟，不使用模型轮次。可再生证据在 `.work/cli-layout-checks-20260919-004846/`，不自动清理。
+`merged` 首跑被 28 秒保护终止，不计通过；保留核验全部阶段后减少重复规格摘要生成，第二次才通过。不可变诊断投影另在 `merge-breaks-prior` 的真实失败上只读核对，1.467 秒：实际合并候选不同于原稿，读取 `Gate.lean:12:48` 的缺失定理诊断，HEAD 不变且未重跑核验。新包完整交接和访问拒绝的六个独立边界均由 `Tests/diagnostic_handoff.py` 验证，包含 Git clone、session 和 next；原失败项目 HEAD 不变，未生成新的核验目录。可先运行 `integration.py --case merge-breaks-prior`，再用 `python Tests/diagnostic_handoff.py --repo <该检查输出>/project --output <新目录> --case acquisition`；其他 case 为 evidence、history、candidate、previous-file、initial-source。纯诊断投影入口是 `lake env lean --run Tests/Diagnostics.lean <新目录>`。
 
-外部边界检查按独立问题组织，避免为每种状态重新构建、审计并重放完整 FIFO。不能仅保留成功链而丢掉必要的失败与 IO 边界覆盖，也不能把超时中止当作性能达标。
+### 证明和外部边界
 
-### 定理与运行检查如何分工
+- `Proofs.lean`、`Workflow.lean`、`Engine.lean` 的定理针对实际纯转换。新增复核定理说明成功通过复核守卫时，凭据集合覆盖控制器当前路线的全部已接纳成果，并逐项绑定范围与合并候选；它们不证明 Git 合并或外部 Lean 进程的实现正确。
+- `accepted_binding` 对应基础 `finish` 的原候选绑定；新合入还依赖 `integrateNode`、实际联合 gate 核验与精确 HEAD 的 CAS。不能拿基础定理冒充全部合入路径的端到端证明。
+- 前置协议 `passed` 只建立可控状态，不证明候选正确性。真实数学检查与真实 Git/进程/入口检查分别报告，失败现场提取始终只读既有证据。
+- 检查分层 checkpoint `34ee404` 已补 `launch_within_budget`、`applicable_answer_binding`、`replay_preserves_state` 并删除重复纯状态样例。它不是检查重整全部完成的凭据：旧 handoff 检查最后超时，原生 MCP 的最终树复验和旧覆盖审计仍有缺口。旧 Parts 拼装相关覆盖已随拼装器删除；满时覆盖策略的实际可执行交付和所有在途操作阻止发布的完整性质，不能由本轮的原策略结果或仅有 `complete` 定理替代。
 
-`Proofs.lean`、`Workflow.lean`、`Engine.lean` 中的定理针对生产实际调用的纯转换函数，由 Lean 检查证明。`Tests/WorkflowScenarios.lean` 的 `ensure` 则是运行时样例断言；写成 Lean 不等于已有定理，把有限样例改成编译时求值也不等于证明所有输入。
+`rootClosed` 是当前根的有效证明，`complete` 仍要求当前路线无活动包及所有已登记在途操作结清；旧路线 worker 的停止或回收不另加等待。Axiward 只报告失效包，Discussion agent 管理 Codex worker，`reclaim` 只释放包占用并保留操作义务。
 
-| 性质 | 当前依据 | 精简时的边界 |
-| --- | --- | --- |
-| 封存不可换、拒绝释放、旧范围结果被拒绝 | `sealed_cannot_be_replaced`、`rejection_releases`、`changed_scope_rejects` | 单纯重复这些纯状态结论的用例可以删除；文件是否真的按封存对象读取仍需 IO 检查。 |
-| 无环、父结果绑定当前路线与子成果 | `graph_acyclic`、`composed_result_has_current_children` | 可替代重复的图状态样例，不证明源码组装器或外部 Lean 进程正确。 |
-| 取消保留在途义务、迟到观测不复活包、暂停阻止新包 | 对应 `cancel_preserves_obligations`、`late_observation_never_revives`、`pause_blocks_new_package` | 纯状态性质已有证明；实际进程返回后证据是否落盘、断线后是否重复启动仍是 IO 问题。 |
-| 请求重放幂等、预算精确上限、答复适用条件 | 纯转换守卫与部分样例 | 可作为补充通用定理的候选；尚不能宣称这些完整性质都已证明。 |
-| Git 引用竞争、文件内容绑定、进程结果映射、MCP/用户问答路由、导出程序可运行 | 外部设施与 IO 接入实现 | 现有状态定理不能替代实际边界检查。 |
-
-`accepted_binding` 证明的是：接纳必须收到匹配当前范围和候选的 `passed` 结果。它不证明验证器确实核验了实际文件。候选代码的证明检查发生在候选生成以后，不能用控制器自身编译通过来代替。能从回归套件移除的是重复用例，不能因此删除对动态输入的准入守卫或候选核验。
-
-### 已批准的检查分层
-
-1. 将状态断言对应到生产函数的已有定理，删除只重复这些性质的运行样例。
-2. 对必要纯逻辑缺口补充通用定理，不把有限样例求值或独立模型冒充生产实现的证明。
-3. 保留独立的真实外部边界检查，包括验证器接纳、错误证明与审计拒绝、源码组装、Git 绑定与竞争、迟到结果归档、操作不重跑以及 MCP 用户问答。用可控短进程隔离结果处理，避免反复执行完整长链；包含准备和清理的每次检查不得超过 30 秒。
-
-协议夹具可以提供已知前置状态或可控结果，以单独检查实际 IO 处理；模拟 `passed` 不构成候选正确性的证据。数学核验路径必须另外真实运行并分别记录。不能靠缓存验证结果、遗漏绑定检查或默认全跑长链来满足时间要求。
-
-已移除超过 30 秒、且退出本轮范围的 `Tests/isolation/verifier.py` 与 `parallel_check.py` 及其专用记录 helper。SID 启动诊断仍保留在 `experiments/`；生产入口模式已有 6.4 秒记录，已加整体时间预算，本轮按权限检查跳过要求不重跑。
-
-Git、原生执行通道、控制端与完整 Lean 发行版仍是明确的外部信任前提。标准库、编译器及运行时正确性不由本内核证明。当前 worker 使用完全访问模式，依靠说明约定通过薄适配器推进项目；核验候选的子进程仍使用既有原生限制。实现边界和检查入口见[执行模式](permissions.md)。
-
-`Tests/WorkflowScenarios.lean` 的场景断言不是定理证明；形式化保证与真实边界检查分别记录。旧长链的通过记录不能替代当前版本或已精简检查的覆盖声明。
-
-`rootClosed` 表示当前精化图的根有有效结果。`complete` 还要求当前路线没有活动工作包，所有已登记的在途实验均已完成或明确对账；无关的历史支线不要求全部闭合。交付绑定具体 Git 快照与产物摘要。Worker 负责选择后续工作，控制器只核验操作与成果，不保证开放问题必然收敛。
-
-存储、进程身份、完整原生记录、资源访问、编译及产品导出对应关系仍由外部契约和集成检查支撑。当前是有限 FIFO 规格族，不能据此宣称支持任意软件需求的影响分析。根规格和 checker 不能由 worker 自定义来绕过已登记目标。
+Git、CLI/适配器、完整 Lean 发行版、Codex 原生执行通道与操作系统仍是外部信任前提。当前固定 FIFO 规格族不代表任意软件验证；worker 完全访问模式依靠说明约定，权限隔离检查按用户要求跳过。

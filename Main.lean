@@ -42,6 +42,7 @@ def usage : String := "axiward init <new-absolute-project-directory> <trusted-po
   axiward revise-preview <repo> <request-id> <registered-policy-dir>\n\
   axiward revise <repo> <request-id> <registered-policy-dir> <review-token> (user-only)\n\
   axiward cancel <repo> <request-id> <worker-id> <serial> <reason> [node=0]\n\
+  axiward reclaim <repo> <request-id> <node> <serial> <reason> (controller-only; stop worker first)\n\
   Controller CLI: protect this entry point; worker identity comes from its harness adapter."
 
 def main (args : List String) : IO UInt32 := do
@@ -66,6 +67,7 @@ def main (args : List String) : IO UInt32 := do
       emit (Json.mkObj [("head", toJson loaded.head), ("state", toJson loaded.state.domain),
         ("nodes", toJson loaded.state.nodes), ("rootClosed", toJson loaded.state.domain.published.isSome),
         ("complete", toJson (complete loaded.state)),
+        ("invalidatedPackages", Controller.invalidatedPackages loaded.state),
         ("obsoleteGoals", toJson obsolete),
         ("transitions", toJson loaded.state.journal.entries.length)])
     | ["begin", repo, id, owner, node, action] =>
@@ -83,6 +85,8 @@ def main (args : List String) : IO UInt32 := do
       send repo id (.worker owner) (.submit serial candidate) node
     | ["cancel", repo, id, owner, serial, reason, node] =>
       send repo id (.worker owner) (.cancel (← serialOf serial) reason) (← serialOf node)
+    | ["reclaim", repo, id, node, serial, reason] =>
+      send repo id .controller (.cancel (← serialOf serial) reason) (← serialOf node)
     | ["check", repo, id, serial, node] =>
       let reply ← Controller.check repo id (← serialOf node) (← serialOf serial)
       let parents ← try Controller.propagate repo catch error => do
@@ -90,6 +94,9 @@ def main (args : List String) : IO UInt32 := do
         pure []
       unless parents.isEmpty do IO.eprintln s!"Composed parent nodes: {parents}"
       Git.synchronize repo
+      let current ← Git.load repo
+      unless (obsoletePackages current.state).isEmpty do
+        IO.eprintln (Json.mkObj [("invalidatedPackages", Controller.invalidatedPackages current.state)]).compress
       emit (toJson reply)
     | ["compose", repo, node] => emit (toJson (← Controller.compose repo (← serialOf node)))
     | ["compose", repo, node, id] => emit (toJson (← Controller.compose repo (← serialOf node) (some id)))
@@ -98,7 +105,7 @@ def main (args : List String) : IO UInt32 := do
     | ["overview", repo] => emit (Interface.status (← Git.load repo))
     | ["worker-status", repo, _owner] =>
       let loaded ← Git.load repo
-      emit (Interface.workerStatus loaded)
+      emit (← Interface.workerStatus repo loaded)
     | ["session", repo, view, python, adapter] => emit (← Interface.session repo view python adapter)
     | ["package-info", repo, owner, node, serial] =>
       emit (← Interface.packageInfo repo owner (← serialOf node) (← serialOf serial))

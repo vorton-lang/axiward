@@ -20,7 +20,7 @@ def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Opti
     unless entry.request.node == node && entry.request.actor == .controller do
       throw (IO.userError "request ID conflict")
     match entry.request.command with
-    | .finish ticket _ _ | .finishRefinement ticket _ _
+    | .finish ticket _ _ | .finishRefinement ticket _ _ | .integrate ticket _ _
     | .archive ticket _ _
     | .workflow (.prepare ticket _) | .workflow (.ask ticket _) | .workflow (.reject ticket _) =>
       unless ticket == serial do throw (IO.userError "request ID conflict")
@@ -29,11 +29,70 @@ def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Opti
     | _ => throw (IO.userError "request ID conflict")
   return none
 
+/-- Admission is bound to the exact formal commit used for merging and checking.
+    A competing commit requires a fresh check, never replay of the old verdict. -/
+def commitChecked (repo : FilePath) (loaded : Git.Loaded) (request : Request) : IO Reply := do
+  let change ← Git.decode ((step loaded.state request).mapError (fun e => s!"{repr e}"))
+  unless ← Git.commitChange repo loaded change do
+    throw (IO.userError "formal state changed during verification; resume to merge and verify the latest snapshot")
+  return change.reply
+
+def checkMerged (repo : FilePath) (loaded : Git.Loaded) (node serial : Nat)
+    (scope : Scope) (submitted : Candidate) (reuse : Option CheckedReuse := none) :
+    IO (MergeCheck × String) := do
+  let base := packageSource loaded.state.journal.entries node serial
+  let current := sourceAt loaded.state.journal.entries
+  let proposed := reuse.map (·.source.candidate) |>.getD submitted
+  let merged ← Git.mergeSource repo base current proposed
+  let candidate : Candidate := ⟨merged.tree⟩
+  let required := requiredResults loaded.state.nodes
+  let binding ← Git.hashText repo (Json.mkObj [
+    ("head", toJson loaded.head), ("base", toJson base), ("current", toJson current),
+    ("submitted", toJson submitted), ("proposed", toJson proposed), ("merged", toJson candidate),
+    ("required", toJson required), ("clean", toJson merged.clean), ("report", toJson merged.report)]).compress
+  let initial : MergeCheck := ⟨base, current, submitted, candidate, [],
+    .rejected "source conflict; start a new package from the current HEAD", reuse⟩
+  unless merged.clean do
+    return (initial, ← Git.tree repo none #[⟨"merge.json", binding⟩] #[("conflict", candidate.tree)])
+  -- The registered FIFO checker can check the exact union in one build. It does
+  -- not add clauses belonging only to unfinished goals.
+  let scopes := scope :: required.map (·.publication.scope)
+  let mut claims : List Nat := []
+  for input in scopes do claims := (claims ++ (← FifoPolicy.readClaims repo input.policy)).eraseDups
+  let joint ← FifoPolicy.restrictScope repo loaded.state.domain.scope claims
+  unless scopes.all (fun input => compatible input joint) do
+    throw (IO.userError "combined verifier scope does not cover the required guarantees")
+  let result ← Verifier.check repo joint candidate
+  let evidence ← Git.tree repo none #[⟨"merge.json", binding⟩]
+    #[("verification", result.evidence), ("merged", candidate.tree)]
+  match result.verdict with
+  | .passed output =>
+    let project (goal : Scope) : IO CheckedOutput := do
+      if goal == joint then return output
+      let receipt ← Git.hashText repo (Json.mkObj [
+        ("kind", toJson "joint-verification"), ("scope", toJson goal), ("candidate", toJson candidate),
+        ("product", toJson output.product), ("verificationScope", toJson joint),
+        ("verificationReceipt", toJson output.receipt)]).compress
+      return ⟨goal, candidate, output.product, receipt⟩
+    let rechecked ← required.mapM fun previous => do
+      return (⟨previous, ← project previous.publication.scope⟩ : Rechecked)
+    let admitted ← project scope
+    let receipts := #[⟨"receipt.json", admitted.receipt⟩] ++ rechecked.toArray.map
+      (fun r => (⟨s!"receipts/{r.previous.node}.json", r.output.receipt⟩ : Git.Blob))
+    let evidence ← Git.tree repo (some evidence) receipts #[("product", output.product)]
+    return ({ initial with verdict := .passed admitted, rechecked }, evidence)
+  | verdict => return ({ initial with verdict }, evidence)
+
 /-- Persist a completed check, retaining its evidence even if the package ended
     while the external verifier was running. -/
 def recordCheck (repo : FilePath) (id : String) (node serial : Nat)
-    (candidate : Candidate) (command : Axiward.Command) : IO Reply := do
-  try Git.transact repo ⟨id, .controller, command, node⟩
+    (candidate : Candidate) (command : Axiward.Command) (checkedAt : Option Git.Loaded := none) : IO Reply := do
+  try
+    match checkedAt with
+    | some loaded => commitChecked repo loaded ⟨id, .controller, command, node⟩
+    | none =>
+      if let .integrate _ _ _ := command then throw (IO.userError "merged check requires its exact input commit")
+      Git.transact repo ⟨id, .controller, command, node⟩
   catch error =>
     match ← recordedCheck repo id node serial with
     | some reply => return reply
@@ -45,6 +104,7 @@ def recordCheck (repo : FilePath) (id : String) (node serial : Nat)
       let mut trees : Array (String × String) := #[]
       let mut blobs : Array Git.Blob := #[⟨"late-result.json", raw⟩]
       match command with
+      | .integrate _ _ evidence => trees := trees.push ("check", evidence)
       | .finish _ verdict evidence =>
         trees := trees.push ("check", evidence)
         if let .passed output := verdict then
@@ -54,6 +114,7 @@ def recordCheck (repo : FilePath) (id : String) (node serial : Nat)
       | _ => pure ()
       let evidence ← Git.tree repo none blobs trees
       Git.transact repo ⟨id, .controller, .archive serial candidate evidence, node⟩
+
 
 def check (repo : FilePath) (id : String) (node serial : Nat) : IO Reply := do
   if let some reply ← recordedCheck repo id node serial then return reply
@@ -72,15 +133,21 @@ def check (repo : FilePath) (id : String) (node serial : Nat) : IO Reply := do
   let command : Axiward.Command ← match package.action with
     | .execute => do
       if stale then pure (.finish serial (.rejected "root requirements changed") staleEvidence) else do
-        let result ← Verifier.check repo target.domain.scope candidate
-        pure (Command.finish serial result.verdict result.evidence)
+        let (result, evidence) ← checkMerged repo loaded node serial target.domain.scope candidate
+        pure (.integrate serial result evidence)
     | .refine => do
       if stale then pure (.finishRefinement serial (.rejected "root requirements changed") staleEvidence) else do
         let result ← Refinement.check repo target.domain.scope candidate loaded.state
-        pure (Command.finishRefinement serial result.verdict result.evidence)
+        match result.verdict with
+        | .reused reuse =>
+          let (checked, evidence) ← checkMerged repo loaded node serial target.domain.scope candidate (some reuse)
+          let combined ← Git.tree repo none #[] #[("reuse", result.evidence), ("merge", evidence)]
+          pure (.integrate serial checked combined)
+        | _ => pure (Command.finishRefinement serial result.verdict result.evidence)
     | .explore | .requestDecision => do
       pure (.workflow (← FlowIO.check repo target.domain.scope package candidate (!stale)))
-  recordCheck repo id node serial candidate command
+  recordCheck repo id node serial candidate command (some loaded)
+
 
 def compositionIdentity (repo : FilePath) (scope : Scope) (route : Route)
     (children : List ChildResult) : IO String :=
@@ -111,7 +178,8 @@ def compose (repo : FilePath) (node : Nat) (requestId : Option String := none) :
   unless scopeUsable loaded.state.nodes target.domain.scope do
     throw (IO.userError "parent depends on obsolete requirements")
   let (candidate, verdict, evidence) ← try
-    let candidate ← Refinement.assemble repo target.domain.scope route children
+    let some candidate := sourceAt loaded.state.journal.entries
+      | throw (IO.userError "no admitted shared source")
     let result ← Verifier.check repo target.domain.scope candidate
     pure (candidate, result.verdict, result.evidence)
   catch error =>
@@ -120,7 +188,7 @@ def compose (repo : FilePath) (node : Nat) (requestId : Option String := none) :
     let evidence ← Git.tree repo none #[⟨"assembly-error.json", binding⟩]
     pure (⟨""⟩, Verdict.rejected error.toString, evidence)
   let input : Composition := ⟨target.domain.scope, route, children, candidate⟩
-  try Git.transact repo ⟨id, .controller, .compose input verdict evidence, node⟩
+  try commitChecked repo loaded ⟨id, .controller, .compose input verdict evidence, node⟩
   catch error =>
     let current ← Git.load repo
     if let some entry := current.state.journal.entries.find? (fun e => e.request.id == id) then
@@ -155,6 +223,12 @@ def propagate (repo : FilePath) : IO (List Nat) := do
     | _ => pure ()
   return completed
 
+def invalidatedPackages (s : State) : Json :=
+  toJson ((obsoletePackages s).map fun (node, p, reason) => Json.mkObj [
+    ("node", toJson node), ("serial", toJson p.serial), ("owner", toJson p.owner),
+    ("reason", toJson reason),
+    ("next", toJson "Discussion agent: stop this owner's Codex worker, then use reclaim to cancel this package. Settle registered operations separately.")])
+
 def revisionImpact (before after : State) : Json := Id.run do
   let previous := before.domain.scope.requirements
   let current := after.domain.scope.requirements
@@ -174,7 +248,8 @@ def revisionImpact (before after : State) : Json := Id.run do
   return Json.mkObj [("beforeRevision", toJson before.domain.scope.revision),
     ("afterRevision", toJson after.domain.scope.revision), ("changedRequirements", toJson changed),
     ("invalidatedResults", toJson invalidated), ("retainedResults", toJson retained),
-    ("obsoleteGoals", toJson obsolete), ("stalePackages", toJson stalePackages)]
+    ("obsoleteGoals", toJson obsolete), ("stalePackages", toJson stalePackages),
+    ("invalidatedPackages", invalidatedPackages after)]
 
 def revisionToken (repo : FilePath) (expected replacement : Scope) : IO String :=
   Git.hashText repo (Json.mkObj [("expected", toJson expected), ("replacement", toJson replacement)]).compress

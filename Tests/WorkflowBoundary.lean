@@ -5,6 +5,57 @@ open Axiward Lean System
 def require (condition : Bool) (message : String) : IO Unit :=
   unless condition do throw (IO.userError message)
 
+def routeCase (repo : FilePath) (scope : Scope) (certificate : String) : IO Unit := do
+  let advance (s : State) (actor : Actor) (command : Axiward.Command) (node : Nat := 0) : IO State := do
+    return (← Git.decode ((step s ⟨s!"fixture-{s.journal.entries.length}", actor, command, node⟩).mapError reprStr)).after
+  let mut s ← Git.decode (restore { initial := scope })
+  s ← advance s .controller (.begin "planner" .refine)
+  s ← advance s (.worker "planner") (.submit 0 ⟨certificate⟩)
+  s ← advance s .controller (.finishRefinement 0
+    (.passed ⟨scope, ⟨certificate⟩, [.fresh scope, .fresh scope], certificate, none⟩) certificate)
+  s ← advance s .controller (.begin "worker-a" .execute) 1
+  s ← advance s .controller (.begin "worker-b" .execute) 2
+  s ← advance s .controller (.begin "planner-2" .refine)
+  s ← advance s (.worker "planner-2") (.submit 1 ⟨certificate⟩)
+  let before ← Git.load repo
+  let journal ← Git.hashText repo (toJson s.journal).compress
+  let tree ← Git.tree repo (some before.head) #[⟨".axiward/state.json", journal⟩]
+    #[(".axiward/route", certificate), (".axiward/candidate", certificate),
+      (".axiward/nodes/1/policy", scope.policy), (".axiward/nodes/2/policy", scope.policy)]
+  let head ← Git.commitTree repo tree (some before.head) "route-change fixture\n"
+  require (← Git.compareAndSwap repo (some before.head) head) "fixture commit failed"
+  let _ ← Git.transact repo ⟨"replace-route", .controller, .finishRefinement 1
+    (.passed ⟨scope, ⟨certificate⟩, [.reuse ⟨2, scope⟩, .fresh scope], certificate, none⟩) certificate, 0⟩
+  let loaded ← Git.load repo
+  let alerts : List Json ← Git.decode (fromJson? (Controller.invalidatedPackages loaded.state))
+  require (alerts.length == 1 && alerts.head?.any (fun alert =>
+    (alert.getObjValAs? Nat "node").toOption == some 1 &&
+    (alert.getObjValAs? Nat "serial").toOption == some 0 &&
+    (alert.getObjValAs? String "owner").toOption == some "worker-a"))
+    "route invalidation missed A or incorrectly stopped the reused shared node B"
+  -- End the root by a different direct route. Old workers remain recorded, but
+  -- must not make the interface postpone an otherwise complete project.
+  let mut doneState := loaded.state
+  doneState ← advance doneState .controller (.begin "direct" .refine)
+  doneState ← advance doneState (.worker "direct") (.submit 2 ⟨certificate⟩)
+  doneState ← advance doneState .controller (.finishRefinement 2
+    (.passed ⟨scope, ⟨certificate⟩, [], certificate, none⟩) certificate)
+  doneState ← advance doneState .controller (.begin "closer" .execute)
+  doneState ← advance doneState (.worker "closer") (.submit 3 ⟨certificate⟩)
+  doneState ← advance doneState .controller (.finish 3
+    (.passed ⟨scope, ⟨certificate⟩, certificate, scope.specification⟩) certificate)
+  require (complete doneState && (obsoletePackages doneState).length == 2)
+    "obsolete workers delayed completion"
+  let executable := (← IO.appPath).parent.getD repo / "axiward.exe"
+  let output ← IO.Process.output {
+    cmd := executable.toString
+    args := #["reclaim", repo.toString, "reclaim-a", "1", "0", "Codex worker stopped by discussion agent"] }
+  require (output.exitCode == 0) output.stdout
+  let after ← Git.load repo
+  require ((obsoletePackages after.state).isEmpty &&
+    after.state.nodes[2]?.any (fun n => n.domain.active.any (fun p => p.owner == "worker-b")))
+    "controller reclaim disturbed the retained shared worker"
+
 /-- Synthetic verifier values exercise IO retention, never mathematical acceptance.
     Actual Lean acceptance/rejection is checked by verifier_boundary. -/
 def main (args : List String) : IO UInt32 := do
@@ -16,6 +67,10 @@ def main (args : List String) : IO UInt32 := do
     let policy ← Git.tree repo none #[⟨"Axiward/Spec.lean", spec⟩]
     let scope : Scope := ⟨0, spec, policy, []⟩
     Git.create repo scope
+    if kind == "route" then
+      routeCase repo scope policy
+      IO.println "PASS: route invalidation projection and controller reclaim; proof values are fixtures"
+      return 0
     let plan : ExplorePlan := ⟨"test transport recovery", 1, "one observation"⟩
     let planBlob ← Git.hashText repo (toJson plan).compress
     let candidate : Candidate := ⟨← Git.tree repo none #[⟨"exploration.json", planBlob⟩]⟩

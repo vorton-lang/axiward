@@ -119,4 +119,20 @@ def selectClaims (repo : FilePath) (base : String) (claims : List Nat) : IO Scop
   return ⟨0, ← Git.resolve repo s!"{policy}:Axiward/Spec.lean", policy,
     ← requirementRefs repo policy overflow claims⟩
 
+/-- Restriction of an already registered scope changes only the goal gate.
+    Specification and checker bytes keep their existing content addresses. -/
+def restrictScope (repo : FilePath) (base : Scope) (claims : List Nat) : IO Scope := do
+  unless !claims.isEmpty && claims.all (· < 6) && claims.eraseDups == claims do
+    throw (IO.userError "invalid FIFO clause selection")
+  let ids := ["fifo/context", "fifo/checker"] ++ claims.map (fun n => s!"fifo/{n}")
+  let requirements ← ids.mapM fun id => do
+    let some r := base.requirements.find? (fun r => r.id == id)
+      | throw (IO.userError "clause is outside the registered scope")
+    pure r
+  let overflow ← readOverflow repo base.policy
+  let policy ← Git.tree repo (some base.policy) #[
+    ⟨"claims.json", ← Git.hashText repo (toJson claims).compress⟩,
+    ⟨"Gate.lean", ← Git.hashText repo (gate overflow claims)⟩]
+  return ⟨0, base.specification, policy, requirements⟩
+
 end Axiward.FifoPolicy

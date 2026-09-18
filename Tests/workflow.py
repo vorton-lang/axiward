@@ -15,7 +15,7 @@ def main():
     started = time.monotonic()
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--case", required=True, choices=["late", "intent"])
+    parser.add_argument("--case", required=True, choices=["late", "intent", "route"])
     args = parser.parse_args()
     source = Path(__file__).resolve().parent.parent
     output = args.output.resolve()

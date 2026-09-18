@@ -122,6 +122,22 @@ structure ChildResult where
   publication : Publication
   deriving Repr, BEq, DecidableEq, ToJson, FromJson
 
+/-- Every retained guarantee is checked on the same merged source snapshot. -/
+structure Rechecked where
+  previous : ChildResult
+  output : CheckedOutput
+  deriving Repr, BEq, DecidableEq, ToJson, FromJson
+
+structure MergeCheck where
+  base : Option Candidate
+  current : Option Candidate
+  submitted : Candidate
+  candidate : Candidate
+  rechecked : List Rechecked
+  verdict : Verdict
+  reuse : Option CheckedReuse := none
+  deriving Repr, BEq, DecidableEq, ToJson, FromJson
+
 structure Composition where
   scope : Scope
   route : Route
@@ -222,6 +238,7 @@ inductive Command where
   | begin (owner : String) (action : Action)
   | submit (serial : Nat) (candidate : Candidate)
   | finish (serial : Nat) (verdict : Verdict) (evidenceTree : String)
+  | integrate (serial : Nat) (check : MergeCheck) (evidenceTree : String)
   | cancel (serial : Nat) (reason : String)
   | revise (expected replacement : Scope)
   | finishRefinement (serial : Nat) (verdict : RefinementVerdict) (evidenceTree : String)
@@ -293,16 +310,29 @@ def admittedPublication (entry : Entry) : Option Publication :=
   | .controller, .finish _ (.passed output) _, .accepted _
   | .controller, .compose _ (.passed output) _, .composed =>
     some ⟨output.scope, output.candidate, output.product, output.receipt⟩
+  | .controller, .integrate _ check _, .accepted _
+  | .controller, .integrate _ check _, .reused _ _ => do
+    let .passed output := check.verdict | none
+    some ⟨output.scope, output.candidate, output.product, output.receipt⟩
   | .controller, .finishRefinement _ (.reused output) _, .reused _ _ =>
     some ⟨output.scope, output.source.candidate, output.source.product, output.receipt⟩
   | _, _, _ => none
 
+def admissions (entry : Entry) : List ChildResult :=
+  match admittedPublication entry with
+  | none => []
+  | some publication =>
+    ⟨entry.request.node, publication⟩ :: (match entry.request.command with
+      | .integrate _ check _ => check.rechecked.map fun r =>
+        ⟨r.previous.node, ⟨r.output.scope, r.output.candidate, r.output.product, r.output.receipt⟩⟩
+      | _ => [])
+
 def priorAdmission (history : List Entry) (node : Nat) (publication : Publication) : Bool :=
-  history.any (fun entry => decide (entry.request.node = node ∧ admittedPublication entry = some publication))
+  history.any (fun entry => (admissions entry).any (fun r => decide (r = ⟨node, publication⟩)))
 
 theorem priorAdmission_iff (history : List Entry) (node : Nat) (publication : Publication) :
     priorAdmission history node publication = true ↔
-      ∃ entry ∈ history, entry.request.node = node ∧ admittedPublication entry = some publication := by
+      ∃ entry ∈ history, (⟨node, publication⟩ : ChildResult) ∈ admissions entry := by
   simp [priorAdmission, List.any_eq_true]
 
 structure Journal where
@@ -310,6 +340,16 @@ structure Journal where
   initial : Scope
   entries : List Entry := []
   deriving Repr, BEq, DecidableEq, ToJson, FromJson
+
+def sourceAt (history : List Entry) : Option Candidate :=
+  history.foldl (fun source entry => match admittedPublication entry with
+    | some p => some p.candidate
+    | none => source) none
+
+/-- The journal prefix at acquisition fixes the merge base, including an empty
+    source tree before the first accepted implementation. -/
+def packageSource (history : List Entry) (node serial : Nat) : Option Candidate :=
+  sourceAt (history.takeWhile (fun e => !(e.request.node == node && e.reply == .acquired serial)))
 
 /-- Current results match the current scope; occupancy and closure cannot overlap;
     every active package uses an already allocated, non-reusable serial. -/

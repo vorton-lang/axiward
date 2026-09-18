@@ -113,6 +113,17 @@ def currentNodes (nodes : Array Node) : List Nat := Id.run do
           seen := (seen ++ r.children.map (·.node)).eraseDups
   return seen
 
+/-- A shared dependency remains useful while any current route reaches it. -/
+def obsoletePackages (s : State) : List (Nat × Package × String) :=
+  s.nodes.toList.zipIdx.filterMap fun (n, node) => do
+    let p ← n.domain.active
+    let reason := if p.input != n.domain.scope || !scopeUsable s.nodes p.input then
+        "package input no longer matches the current requirements"
+      else if !(currentNodes s.nodes).contains node then
+        "node is no longer required by the current route"
+      else ""
+    if reason.isEmpty then none else some (node, p, reason)
+
 def pendingOperations (s : State) : Nat :=
   s.nodes.foldl (fun n node => n + (node.domain.workflow.operations.filter (·.result.isNone)).length) 0
 
@@ -214,9 +225,102 @@ def composeNode (nodes : Array Node) (id : Nat) (input : Composition) (verdict :
       support := some input }
     return (nodes.set! id updated, .composed)
 
+def requiredResults (nodes : Array Node) : List ChildResult :=
+  (currentNodes nodes).filterMap fun id => do
+    let n ← nodes[id]?
+    let publication ← n.domain.published
+    return ⟨id, publication⟩
+
+def rechecksValid (nodes : Array Node) (check : MergeCheck) : Bool :=
+  decide (check.rechecked.map (·.previous) = requiredResults nodes) &&
+  check.rechecked.all (fun r => decide (r.output.scope = r.previous.publication.scope ∧
+    r.output.candidate = check.candidate) && !r.output.product.isEmpty && !r.output.receipt.isEmpty)
+
+theorem rechecks_cover_required (nodes : Array Node) (check : MergeCheck)
+    (h : rechecksValid nodes check = true) :
+    check.rechecked.map (·.previous) = requiredResults nodes := by
+  simp only [rechecksValid, Bool.and_eq_true, decide_eq_true_eq] at h
+  exact h.1
+
+theorem rechecks_bind_merged_candidate (nodes : Array Node) (check : MergeCheck)
+    (h : rechecksValid nodes check = true) (r : Rechecked) (member : r ∈ check.rechecked) :
+    r.output.scope = r.previous.publication.scope ∧ r.output.candidate = check.candidate := by
+  simp only [rechecksValid, Bool.and_eq_true, List.all_eq_true, decide_eq_true_eq] at h
+  exact ((h.2 r member).1).1
+
+def refreshResults (nodes : Array Node) (checked : List Rechecked) : Array Node := Id.run do
+  let refreshed := nodes.mapIdx fun id n =>
+    match checked.find? (fun r => r.previous.node == id) with
+    | none => n
+    | some r =>
+      let p : Publication := ⟨r.output.scope, r.output.candidate, r.output.product, r.output.receipt⟩
+      { n with domain := { n.domain with published := some p } }
+  return refreshed.mapIdx fun id n =>
+    match checked.find? (fun r => r.previous.node == id) with
+    | none => n
+    | some r =>
+      let support := n.support.map fun input =>
+        { input with
+          candidate := r.output.candidate
+          children := (childResults refreshed input.route).getD input.children }
+      { n with support }
+
+/-- Original submissions stay sealed; only the controller's checked merge can
+    replace the formal source and refresh all still-required guarantees. -/
+private def integrateNodeCore (nodes : Array Node) (id serial : Nat) (check : MergeCheck) :
+    Except Fault (Array Node × Reply) := do
+  let some n := nodes[id]? | throw .wrongNode
+  let some p := n.domain.active | throw .wrongPackage
+  unless p.serial == serial do throw .wrongPackage
+  unless p.phase == .checking check.submitted do throw .wrongPhase
+  unless (p.action == .execute && check.reuse.isNone) ||
+      (p.action == .refine && check.reuse.isSome) do throw .wrongAction
+  let ended := { n with domain := { n.domain with active := none } }
+  let reject (reason : String) := .ok (nodes.set! id ended, Reply.rejected serial reason)
+  unless p.input == n.domain.scope && scopeUsable nodes p.input do return ← reject "scope changed"
+  match check.verdict with
+  | .rejected reason => reject reason
+  | .unknown reason => return (nodes.set! id ended, .unresolved serial reason)
+  | .passed output =>
+    unless output.scope == n.domain.scope && output.candidate == check.candidate &&
+        !output.product.isEmpty && !output.receipt.isEmpty do
+      return ← reject "merged verification binding mismatch"
+    if n.domain.workflow.operations.any (·.result.isNone) then
+      return ← reject "operation reconciliation required"
+    if let some reuse := check.reuse then
+      unless reuse.scope == n.domain.scope && reuse.proposal == check.submitted &&
+          sameGoal reuse.source.scope n.domain.scope && !reuse.receipt.isEmpty do
+        return ← reject "reuse binding mismatch"
+    let published : Publication := ⟨output.scope, output.candidate, output.product, output.receipt⟩
+    let updated := (refreshResults nodes check.rechecked).set! id
+      { ended with domain := { ended.domain with published := some published }, route := none, support := none }
+    return (updated, match check.reuse with
+      | none => .accepted serial
+      | some r => .reused serial r.source.receipt)
+
+def integrateNode (nodes : Array Node) (id serial : Nat) (check : MergeCheck) :
+    Except Fault (Array Node × Reply) :=
+  match check.verdict with
+  | .passed _ => if rechecksValid nodes check then integrateNodeCore nodes id serial check
+      else .error .invalidInput
+  | _ => integrateNodeCore nodes id serial check
+
+theorem integrated_passed_requires_rechecks (nodes after : Array Node) (id serial : Nat)
+    (check : MergeCheck) (output : CheckedOutput) (reply : Reply)
+    (passed : check.verdict = .passed output)
+    (h : integrateNode nodes id serial check = .ok (after, reply)) :
+    rechecksValid nodes check = true := by
+  simp only [integrateNode, passed] at h
+  split at h
+  · assumption
+  · contradiction
+
 def runGraph (nodes : Array Node) (request : Request) : Except Fault (Array Node × Reply) := do
   let some n := nodes[request.node]? | throw .wrongNode
   match request.command with
+  | .integrate serial check _ =>
+    unless request.actor == .controller do throw .forbidden
+    integrateNode nodes request.node serial check
   | .archive serial _ _ =>
     unless request.actor == .controller do throw .forbidden
     return (nodes, .archived serial)
@@ -269,6 +373,11 @@ def step (s : State) (request : Request) : Except Fault (Change s) := do
       return ⟨s, entry.reply, false, ⟨[], by simp⟩⟩
     else throw .requestConflict
   | none =>
+    if let .integrate serial check _ := request.command then
+      unless check.current == sourceAt s.journal.entries &&
+          check.base == packageSource s.journal.entries request.node serial do throw .staleRevision
+      if let some reuse := check.reuse then
+        unless priorAdmission s.journal.entries reuse.sourceNode reuse.source do throw .invalidInput
     let startsWork := match request.command with
       | .begin _ _ | .workflow (.launch _ _ _) => true
       | _ => false

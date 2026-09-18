@@ -122,6 +122,30 @@ def commitTree (repo : FilePath) (tree : String) (parent : Option String)
   checked repo (#["commit-tree", tree] ++
     (parent.toArray.flatMap (fun oid => #["-p", oid]))) (some message)
 
+structure Merge where
+  tree : String
+  clean : Bool
+  report : String
+
+/-- Git performs content merging on source-only trees. Controller state is not
+    an input. Temporary commits only describe the fixed base and the two sides. -/
+def mergeSource (repo : FilePath) (base current : Option Candidate) (submitted : Candidate) : IO Merge := do
+  if base == current || current == some submitted then return ⟨submitted.tree, true, ""⟩
+  let empty ← tree repo none #[]
+  let baseTree := base.map (·.tree) |>.getD empty
+  let currentTree := current.map (·.tree) |>.getD empty
+  if currentTree == baseTree || submitted.tree == currentTree then return ⟨submitted.tree, true, ""⟩
+  if submitted.tree == baseTree then return ⟨currentTree, true, ""⟩
+  let ancestor ← commitTree repo baseTree none "Axiward merge base\n"
+  let ours ← commitTree repo currentTree (some ancestor) "Axiward current source\n"
+  let theirs ← commitTree repo submitted.tree (some ancestor) "Axiward submitted source\n"
+  let result ← call repo #["merge-tree", "--write-tree", s!"--merge-base={ancestor}", ours, theirs]
+  unless result.exitCode == 0 || result.exitCode == 1 do
+    throw (IO.userError s!"source merge failed: {result.stderr}")
+  let merged := (result.stdout.splitOn "\n").head!.trimAscii.toString
+  unless objectId merged do throw (IO.userError "source merge returned no tree")
+  return ⟨merged, result.exitCode == 0, result.stdout⟩
+
 /-- Recovery metadata for projecting an already authoritative commit. It never
     supplies project state and is removed after the ordinary checkout catches up. -/
 private structure Checkout where
@@ -244,6 +268,9 @@ def load (repo : FilePath) : IO Loaded := do
   let journal : Journal ← decode (fromJson? json)
   let state ← decode (restore journal)
   verifyBindings repo head state.nodes
+  if let some source := sourceAt state.journal.entries then
+    unless (← resolve repo s!"{head}:source") == source.tree do
+      throw (IO.userError "formal source differs from admission history")
   return ⟨head, state⟩
 
 def create (repo : FilePath) (scope : Scope) : IO Unit := do
@@ -261,10 +288,13 @@ def commitChange (repo : FilePath) (loaded : Loaded) (change : Change loaded.sta
   let stateBlob ← hashText repo (toJson change.after.journal).compress
   let mut blobs : Array Blob := #[⟨".axiward/state.json", stateBlob⟩]
   let mut subtrees : Array (String × String) := #[]
+  let source := sourceAt change.after.journal.entries
+  if source != sourceAt loaded.state.journal.entries then
+    if let some candidate := source then subtrees := subtrees.push ("source", candidate.tree)
   if let some entry := change.after.journal.entries.getLast? then
     let path := nodePath entry.request.node
     match entry.request.command with
-    | .finish serial _ evidence | .finishRefinement serial _ evidence =>
+    | .finish serial _ evidence | .finishRefinement serial _ evidence | .integrate serial _ evidence =>
       subtrees := subtrees.push (s!"{path}/checks/{serial}", evidence)
     | .compose _ _ evidence =>
       subtrees := subtrees.push (s!"{path}/compositions/{change.after.journal.entries.length}", evidence)

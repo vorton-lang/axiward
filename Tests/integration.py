@@ -16,8 +16,9 @@ def main():
     parser.add_argument("--toolchain", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--case", required=True,
-                        choices=["accepted", "assembled", "mixed", "wrong-fifo", "sorry", "missing-proof",
-                                 "refinement", "omitted-clause", "revision", "reuse"])
+                        choices=["accepted", "assembled", "wrong-fifo", "sorry", "missing-proof",
+                                 "refinement", "omitted-clause", "revision", "reuse",
+                                 "merged", "merge-breaks-prior", "merge-conflict", "merge-race"])
     args = parser.parse_args()
     source = Path(__file__).resolve().parent.parent
     output = args.output.resolve()
@@ -35,8 +36,8 @@ def main():
             raise TimeoutError("real verifier boundary exceeded its 28-second budget")
     result = {"case": args.case, "status": "passed" if code == 0 else "failed",
               "seconds": round(time.monotonic() - started, 3), "exitCode": code,
-              "realLeanVerification": args.case not in {"mixed", "revision", "reuse"},
-              "fixtureVerdicts": args.case in {"assembled", "mixed", "reuse"}}
+              "realLeanVerification": args.case not in {"revision", "reuse", "merge-conflict", "merge-race"},
+              "fixtureVerdicts": args.case in {"assembled", "reuse", "merged", "merge-breaks-prior", "merge-conflict", "merge-race"}}
     assert result["seconds"] < 30, "verifier boundary exceeded 30 seconds"
     (output / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result), flush=True)
