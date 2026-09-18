@@ -1,0 +1,80 @@
+{
+  "status": "failed",
+  "cases": [
+    {
+      "name": "valid",
+      "reply": {
+        "rejected": {
+          "reason": "01-build did not pass",
+          "serial": 0
+        }
+      },
+      "buildRecords": [
+        {
+          "arguments": [
+            "--no-cache",
+            "build",
+            "Gate",
+            "fifo_demo"
+          ],
+          "elapsedMs": 513,
+          "exitCode": 1,
+          "name": "01-build",
+          "stderr": "error: AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid.git.checks\\run-27525582012000-748605715\\snapshot\\lake-manifest.json: name: expected a `Name`, got '\"axiward-verified\"'\n",
+          "stdout": ""
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "arguments": [
+        "init",
+        "AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid.git",
+        "AXIWARD\\examples\\fifo\\policy",
+        "USER_HOME\\Documents\\Codex\\2026-09-16\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\work\\m0-l1\\lean-4.34.0-windows"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"initialized\":\"AXIWARD\\\\.work\\\\verifier-isolation-1789719973211333900\\\\valid.git\",\"scope\":{\"policy\":\"1f8c2ff9e76e5a7039e725d0b5bf3bcde482a51409f5c41e3d7faf19308d4b4c\",\"requirements\":[{\"id\":\"fifo/context\",\"version\":\"3f0653e4f6afdd67b9b5821f05450f998ae057846a34a4328a3792965622a657\"},{\"id\":\"fifo/checker\",\"version\":\"db975bd94d7653abe3f2a51f05f7d1a11138a7b7b47325fb9bd1b3d99fb0a01b\"},{\"id\":\"fifo/0\",\"version\":\"925385f926b6b1c5943a7346e357de446029e1e686f27ec4326bd1deb036daf8\"},{\"id\":\"fifo/1\",\"version\":\"cf286586d44b6846cc74bbed9dbddde866a9308c28b3e94102159349b5db674b\"},{\"id\":\"fifo/2\",\"version\":\"d290edf4a538293029543bf1c206e782b4d911b8bc6007a15332bbb22051d1ca\"},{\"id\":\"fifo/3\",\"version\":\"9dfcad11442e1b79337dfa4ee1f2393da1eda98213ce47d4451a44488a78b29b\"},{\"id\":\"fifo/4\",\"version\":\"4992c56925834d7926fd878c82175d0dccfb24fbc452e8b082efa536eab54387\"},{\"id\":\"fifo/5\",\"version\":\"aedc0d1cbc94a72979f8701c70dcf2c57a2937b82e8fece82fab005ad0d508bd\"}],\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+      "stderr": ""
+    },
+    {
+      "arguments": [
+        "begin",
+        "AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid.git",
+        "begin",
+        "worker"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"acquired\":{\"serial\":0}}\n",
+      "stderr": ""
+    },
+    {
+      "arguments": [
+        "submit",
+        "AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid.git",
+        "submit",
+        "worker",
+        "0",
+        "AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid-candidate"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"sealed\":{\"serial\":0}}\n",
+      "stderr": ""
+    },
+    {
+      "arguments": [
+        "check",
+        "AXIWARD\\.work\\verifier-isolation-1789719973211333900\\valid.git",
+        "check",
+        "0"
+      ],
+      "exitCode": 0,
+      "stdout": "{\"rejected\":{\"reason\":\"01-build did not pass\",\"serial\":0}}\n",
+      "stderr": ""
+    }
+  ],
+  "error": "{'name': 'valid', 'reply': {'rejected': {'reason': '01-build did not pass', 'serial': 0}}, 'buildRecords': [{'arguments': ['--no-cache', 'build', 'Gate', 'fifo_demo'], 'elapsedMs': 513, 'exitCode': 1, 'name': '01-build', 'stderr': 'error: AXIWARD\\\\.work\\\\verifier-isolation-1789719973211333900\\\\valid.git.checks\\\\run-27525582012000-748605715\\\\snapshot\\\\lake-manifest.json: name: expected a `Name`, got \\'\"axiward-verified\"\\'\\n', 'stdout': ''}]}",
+  "rawRecord": ".work/verifier-isolation-1789719973211333900/result.json",
+  "rawSha256": "5ede2299d75b5895bda7530f096bb0758cdb9cf3db29146f7d70790ad290f672"
+}

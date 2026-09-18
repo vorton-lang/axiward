@@ -1,0 +1,37 @@
+{
+  "mode": "elevated",
+  "policy": {
+    "filesystem": {
+      ":root": "read",
+      ":workspace_roots": {
+        ".": "write",
+        ".codex": "read",
+        ".git": "read"
+      },
+      "AXIWARD/.work/isolation-1789718832859641200/vault": "deny"
+    },
+    "network": {
+      "enabled": true
+    }
+  },
+  "command": [
+    "codex",
+    "sandbox",
+    "-P",
+    "axiward_probe",
+    "-C",
+    "AXIWARD\\.work\\isolation-1789718832859641200\\view",
+    "-c",
+    "permissions.axiward_probe = { \"filesystem\" = { \":root\" = \"read\", \":workspace_roots\" = { \".\" = \"write\", \".codex\" = \"read\", \".git\" = \"read\" }, \"AXIWARD/.work/isolation-1789718832859641200/vault\" = \"deny\" }, \"network\" = { \"enabled\" = true } }",
+    "-c",
+    "windows.sandbox = \"elevated\"",
+    "USER_HOME\\scoop\\apps\\python311\\current\\python.exe",
+    "AXIWARD\\.work\\isolation-1789718832859641200\\view\\access.py",
+    "AXIWARD\\.work\\isolation-1789718832859641200"
+  ],
+  "exitCode": 0,
+  "stdout": "{\"view\": \"allowed\", \"private-read\": {\"denied\": null, \"message\": \"[Errno 13] Permission denied: 'AXIWARD\\\\\\\\.work\\\\\\\\isolation-1789718832859641200\\\\\\\\vault\\\\\\\\data.txt'\"}, \"private-write\": {\"denied\": null, \"message\": \"[Errno 13] Permission denied: 'AXIWARD\\\\\\\\.work\\\\\\\\isolation-1789718832859641200\\\\\\\\vault\\\\\\\\new.txt'\"}, \"outside-read\": \"allowed\"}\n",
+  "stderr": "",
+  "runDirectory": ".work/isolation-1789718832859641200",
+  "rawSha256": "8d010cbe52a7f8e31559cd1b34a413b24b982501fff37a1c0de3403cb78e8706"
+}

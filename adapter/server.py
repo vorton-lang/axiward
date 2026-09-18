@@ -4,8 +4,12 @@ One protected launch configuration binds one worker view. No worker tool accepts
 an identity, canonical path, user answer, verifier result or arbitrary command.
 """
 import argparse
+import ctypes
 import json
+import msvcrt
+import os
 import re
+import stat
 import subprocess
 import sys
 import uuid
@@ -76,7 +80,7 @@ class Adapter:
     def package(self, node, serial):
         # Ownership is checked from canonical allocation history, not local files.
         package = self.cli("package-info", self.repo, self.worker, node, serial)
-        directory = (self.view / "packages" / f"{node}-{serial}").resolve()
+        directory = (self.view / "work" / "packages" / f"{node}-{serial}").resolve()
         if not directory.is_relative_to(self.view):
             raise ValueError("package view escapes its root")
         return package["domain"], directory
@@ -92,6 +96,51 @@ class Adapter:
                 if child.exists() and not child.resolve().is_relative_to(path):
                     raise ValueError("candidate contains an out-of-view link")
         return path
+
+    def read_input(self, file, allowed_root):
+        """Validate the opened handle, not just a path checked before opening it.
+
+        This prevents junction/symlink swaps from turning the privileged adapter
+        into a file reader. Hard links are refused because their display path
+        alone cannot establish where the underlying file came from.
+        """
+        descriptor = os.open(file, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
+        try:
+            info = os.fstat(descriptor)
+            if not stat.S_ISREG(info.st_mode) or info.st_nlink != 1:
+                raise ValueError("input must be a regular file with one link")
+            final_name = ctypes.WinDLL("kernel32", use_last_error=True).GetFinalPathNameByHandleW
+            final_name.argtypes = [ctypes.c_void_p, ctypes.c_wchar_p, ctypes.c_uint32, ctypes.c_uint32]
+            final_name.restype = ctypes.c_uint32
+            buffer = ctypes.create_unicode_buffer(32768)
+            length = final_name(msvcrt.get_osfhandle(descriptor), buffer, len(buffer), 0)
+            if not length or length >= len(buffer):
+                raise OSError("cannot establish input handle location")
+            name = buffer.value.removeprefix("\\\\?\\")
+            if name.startswith("UNC\\"):
+                name = "\\\\" + name[4:]
+            actual = Path(name)
+            if not actual.is_relative_to(allowed_root) or not actual.is_relative_to(self.view / "work"):
+                raise ValueError("opened input escapes the assigned work area")
+            with os.fdopen(descriptor, "rb", closefd=False) as stream:
+                return stream.read()
+        finally:
+            os.close(descriptor)
+
+    def stage(self, directory, names, *, missing_allowed=False):
+        directory = self.local(directory)
+        captured = {}
+        for name in names:
+            try:
+                captured[name] = self.read_input(directory / name, directory)
+            except FileNotFoundError:
+                if not missing_allowed:
+                    raise
+        destination = self.repo / "axiward-inbox" / uuid.uuid4().hex
+        destination.mkdir(parents=True)
+        for name, content in captured.items():
+            (destination / name).write_bytes(content)
+        return destination
 
     def validate(self, name, data):
         if name not in TOOLS or not isinstance(data, dict):
@@ -131,8 +180,12 @@ class Adapter:
             if name == "prepare" and (domain["active"] is None or domain["active"]["action"] != "explore"):
                 raise ValueError("prepare requires an exploration package")
             if name != "resume":
+                assignment = self.cli("package-info", self.repo, self.worker, node, serial)["action"]
+                files = {"execute": ["Queue.lean", "Proofs.lean"], "refine": ["plan.json", "Refinement.lean"],
+                         "explore": ["exploration.json"], "requestDecision": ["question.json"]}[assignment]
+                sealed = self.stage(self.local(directory, "candidate"), files, missing_allowed=True)
                 self.cli("submit", self.repo, self.request_id(data["request_id"]), self.worker, serial,
-                         self.local(directory, "candidate"), node)
+                         sealed, node)
             result = self.cli("check", self.repo, f"{self.worker}/check/{node}/{serial}", serial, node)
             return {"result": result, "status": self.cli("overview", self.repo),
                     "evidence": self.cli("evidence", self.repo, self.worker, self.view, node, serial)}
@@ -140,8 +193,10 @@ class Adapter:
             if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", data["trial"]):
                 raise ValueError("trial must be a simple directory name")
             request_id = self.request_id(data["request_id"])
+            sealed = self.stage(self.local(directory, "trials", data["trial"]),
+                                ["Queue.lean", "Proofs.lean"], missing_allowed=True)
             intent = self.cli("start-experiment", self.repo, request_id, self.worker, node, serial,
-                              self.local(directory, "trials", data["trial"]))
+                              sealed)
             if intent["replayed"]:
                 return intent
             capture = execute([str(self.exe), "run-experiment", str(self.repo), str(node), request_id],
@@ -150,8 +205,9 @@ class Adapter:
             return {"result": result, "closesGoal": False,
                     "evidence": self.cli("evidence", self.repo, self.worker, self.view, node, serial)}
         if name == "conclude":
+            sealed = self.stage(self.local(directory, "candidate"), ["report.md"])
             return self.cli("conclude", self.repo, self.request_id(data["request_id"]), self.worker,
-                            node, serial, self.local(directory, "candidate", "report.md"))
+                            node, serial, sealed / "report.md")
         if name == "cancel":
             return self.cli("cancel", self.repo, self.request_id(data["request_id"]), self.worker, serial, data["reason"], node)
         if name == "acknowledge":

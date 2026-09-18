@@ -149,11 +149,7 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     ("03-replay", #["env", "leanchecker", "Logic", "Plan", "Refinement", "Gate"])]
   for (name, arguments) in steps do
     let start ← IO.monoMsNow
-    let result ← IO.Process.output {
-      cmd := ((tools.root : FilePath) / "bin" / "lake.exe").toString
-      args := arguments
-      cwd := some snapshot
-      env := Verifier.buildEnvironment }
+    let result ← Sandbox.runVerifier repo snapshot tools.root arguments Verifier.buildEnvironment
     let record : Verifier.ToolResult := ⟨name, arguments, result.exitCode.toNat,
       (← IO.monoMsNow) - start, result.stdout, result.stderr⟩
     let log := (toJson record).compress
@@ -182,7 +178,7 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
   return ⟨.passed ⟨scope, candidate, children, certificate, plan.implementation⟩, certificate⟩
 
 def check (repo : FilePath) (scope : Scope) (candidate : Candidate) (state : State) : IO Result := do
-  let work ← Git.scratch repo
+  let work ← Sandbox.scratch repo
   IO.FS.writeFile (work / "input.json") (Json.mkObj [
     ("scope", toJson scope), ("candidate", toJson candidate)]).compress
   try checkCore repo scope candidate work state

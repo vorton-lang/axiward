@@ -1,0 +1,33 @@
+{
+  "mode": "elevated",
+  "policy": {
+    "filesystem": {
+      ":minimal": "read",
+      "USER_HOME\\scoop\\apps\\python311\\current": "read",
+      "AXIWARD\\.work\\isolation-1789719233042259700\\view": "write"
+    },
+    "network": {
+      "enabled": false
+    }
+  },
+  "command": [
+    "codex",
+    "sandbox",
+    "-P",
+    "axiward_probe",
+    "-C",
+    "AXIWARD\\.work\\isolation-1789719233042259700\\view",
+    "-c",
+    "permissions.axiward_probe = { \"filesystem\" = { \":minimal\" = \"read\", \"USER_HOME\\\\scoop\\\\apps\\\\python311\\\\current\" = \"read\", \"AXIWARD\\\\.work\\\\isolation-1789719233042259700\\\\view\" = \"write\" }, \"network\" = { \"enabled\" = false } }",
+    "-c",
+    "windows.sandbox = \"elevated\"",
+    "USER_HOME\\scoop\\apps\\python311\\current\\python.exe",
+    "AXIWARD\\.work\\isolation-1789719233042259700\\view\\access.py",
+    "AXIWARD\\.work\\isolation-1789719233042259700"
+  ],
+  "exitCode": 1,
+  "stdout": "",
+  "stderr": "windows sandbox failed: elevated Windows sandbox requires effective `:root` read access\n",
+  "runDirectory": ".work/isolation-1789719233042259700",
+  "rawSha256": "3341669f4f0cc2f6bc6ae94883c3f40e33484a075923b2669dd650f23920af9d"
+}

@@ -1,4 +1,5 @@
 import Axiward.FifoPolicy
+import Axiward.Sandbox
 
 namespace Axiward.Verifier
 
@@ -108,11 +109,7 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     ("03-replay", #["env", "leanchecker", "Axiward", "Gate"])]
   for (name, arguments) in steps do
     let start ← IO.monoMsNow
-    let output ← IO.Process.output {
-      cmd := (toolRoot / "bin" / "lake.exe").toString
-      args := arguments
-      cwd := some snapshot
-      env := buildEnvironment }
+    let output ← Sandbox.runVerifier repo snapshot toolRoot arguments buildEnvironment
     let result : ToolResult := ⟨name, arguments, output.exitCode.toNat,
       (← IO.monoMsNow) - start, output.stdout, output.stderr⟩
     IO.FS.writeFile (work / s!"{name}.json") (toJson result).compress
@@ -149,7 +146,7 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
   return ← retain evidence (.passed ⟨scope, candidate, product, receiptBlob⟩)
 
 def check (repo : FilePath) (scope : Scope) (candidate : Candidate) : IO Result := do
-  let work ← Git.scratch repo
+  let work ← Sandbox.scratch repo
   IO.FS.writeFile (work / "input.json") (Json.mkObj [
     ("scope", toJson scope), ("candidate", toJson candidate)]).compress
   try
