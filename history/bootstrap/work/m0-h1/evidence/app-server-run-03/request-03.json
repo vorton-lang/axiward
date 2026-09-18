@@ -1,0 +1,88 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resources",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resource_templates",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "read_mcp_resource",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "status",
+      "type": "function",
+      "namespace": "mcp__axiward_h1"
+    },
+    {
+      "name": "submit",
+      "type": "function",
+      "namespace": "mcp__axiward_h1"
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b02c-576f-7bd1-9697-0a774b212525",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: 08febe\nWall time: 0.1482 seconds\nProcess exited with code 1\nOriginal token count: 111\nOutput:\nMethodInvocationException: \r\nLine |\r\n   2 |  [IO.File]::ReadAllText('USER_HOME/Documents/Codex/2026-09- …\r\n     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | 调用“ReadAllText”并传入“1”个参数时发生异常：“Access to the path 'LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt' is denied.”\r\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b02c-57b3-7980-b310-5f93ff2254e7",
+      "call_id": "call_h1_1",
+      "output": [
+        {
+          "type": "input_text",
+          "text": "Wall time: 0.0594 seconds\nOutput:"
+        },
+        {
+          "type": "input_text",
+          "text": "{\"exitCode\": 0, \"stdout\": \"identity=HOST\\\\yufeng ying\\nrevision=0\\n\", \"stderr\": \"\"}"
+        }
+      ]
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b02c-57eb-7b73-99d0-129829af5113",
+      "call_id": "call_h1_2",
+      "output": [
+        {
+          "type": "input_text",
+          "text": "Wall time: 0.0473 seconds\nOutput:"
+        },
+        {
+          "type": "input_text",
+          "text": "{\"exitCode\": 0, \"stdout\": \"synthetic candidate received\\n\", \"stderr\": \"\"}"
+        }
+      ]
+    }
+  ]
+}

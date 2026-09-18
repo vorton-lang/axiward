@@ -1,0 +1,8 @@
+Axiward.satisfies_Q0.{u} (α : Type u) (n : Nat) : Axiward.SatisfiesQ0 α n
+'Axiward.created' does not depend on any axioms
+'Axiward.enqueue_room' depends on axioms: [propext, Quot.sound]
+'Axiward.enqueue_full' depends on axioms: [propext, Quot.sound]
+'Axiward.dequeue_some' does not depend on any axioms
+'Axiward.dequeue_empty' does not depend on any axioms
+'Axiward.measured' does not depend on any axioms
+'Axiward.satisfies_Q0' depends on axioms: [propext, Quot.sound]

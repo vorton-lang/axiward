@@ -1,0 +1,21 @@
+{
+  "passed": [
+    "initialization protection and request replay",
+    "sealed input survives process restart and local edits; concurrent check commits once",
+    "published binary runs from the committed delivery",
+    "wrong-fifo: rejected, package released, raw evidence retained in Git",
+    "sorry: rejected, package released, raw evidence retained in Git",
+    "missing-proof: rejected, package released, raw evidence retained in Git",
+    "concurrent acquisition has exactly one owner",
+    "storage fault injection and journal validation",
+    "nested refinement, independent concurrent tasks, automatic upward proofs, runnable combined delivery",
+    "refinement missing a root requirement is rejected before creating children",
+    "different implementations cannot be combined; replacing a route preserves existing child results",
+    "delivery tampering prevents state recovery"
+  ],
+  "deliveryCommit": "4880702cf542f2ba9caec289f4e271354aed02030af1c28e0432749eb9376020",
+  "exportedDelivery": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration-2\\delivered",
+  "retainedArtifacts": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration-2",
+  "combinedCommit": "6db58d5d6f12957de4ef914419444e04eef59de5734b266317d4211adda54bc6",
+  "combinedDelivery": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration-2\\combined-delivery"
+}

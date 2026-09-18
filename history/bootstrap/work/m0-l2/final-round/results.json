@@ -1,0 +1,66 @@
+[
+  {
+    "candidate": "correct",
+    "exitCode": 0,
+    "response": {
+      "run": "run-13161496969600",
+      "status": "accepted"
+    }
+  },
+  {
+    "candidate": "wrong-fifo",
+    "exitCode": 1,
+    "response": {
+      "reason": "01-fixed-goal-build did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13173278242500",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "goal-swap",
+    "exitCode": 1,
+    "response": {
+      "reason": "01-fixed-goal-build did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13176350807600",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "extra-axiom",
+    "exitCode": 1,
+    "response": {
+      "reason": "02-environment-audit did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13179752017500",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "sorry-proof",
+    "exitCode": 1,
+    "response": {
+      "reason": "02-environment-audit did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13184890078300",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "runtime-swap",
+    "exitCode": 1,
+    "response": {
+      "reason": "02-environment-audit did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13190057497900",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "stale-proof",
+    "exitCode": 1,
+    "response": {
+      "reason": "01-fixed-goal-build did not pass; evidence: LEGACY_WORKSPACE\\work\\m0-l2\\runs\\run-13196212455000",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "candidate": "spec-swap",
+    "exitCode": 1,
+    "response": {
+      "reason": "Candidate tried to supply controller-owned file: Spec.lean",
+      "status": "not-accepted"
+    }
+  }
+]

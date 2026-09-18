@@ -1,0 +1,26 @@
+{
+  "status": "completed",
+  "interactiveApprovals": [],
+  "effectiveApprovalPolicy": "on-request",
+  "threadId": "01a0b028-5365-7373-9074-24e939289f27",
+  "turn": {
+    "id": "01a0b028-5fa8-72c0-958e-6e1ffb9ccde2",
+    "items": [
+      {
+        "type": "agentMessage",
+        "id": "msg_h1_2",
+        "text": "Fixed H1 tool sequence complete.",
+        "phase": null,
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null
+      }
+    ],
+    "itemsView": "summary",
+    "status": "completed",
+    "error": null,
+    "startedAt": 1789661831,
+    "completedAt": 1789661833,
+    "durationMs": 2552
+  }
+}

@@ -1,0 +1,32 @@
+[
+  {
+    "name": "direct-repository-read",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "[IO.File]::ReadAllText('LEGACY_WORKSPACE/work/m0-h1/lab/repository/private.txt')"
+  },
+  {
+    "name": "allowed-status",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' status"
+  },
+  {
+    "name": "reject-extra-arguments",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' status decide"
+  },
+  {
+    "name": "allowed-submit",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' submit"
+  },
+  {
+    "name": "forbidden-decide",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' decide"
+  },
+  {
+    "name": "copied-executable",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& './axiward_probe.exe' status"
+  }
+]

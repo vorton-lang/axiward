@@ -1,0 +1,9 @@
+{
+  "question": "disconnect",
+  "toolRequest": 5,
+  "elicitationId": "h3-c4c8fe26052545008d10322790e92820",
+  "artifactVersion": "21044744e7c7b55e94d3861fce0a0fc492f40526663589d4fd8057d91d3ed699",
+  "specVersion": "b319453da3bbf969c2e5d32815d59fd71904fc74ddc8b7b19d63a4f929f322b1",
+  "decision": "approve",
+  "source": "native-mcp-elicitation-test-client"
+}

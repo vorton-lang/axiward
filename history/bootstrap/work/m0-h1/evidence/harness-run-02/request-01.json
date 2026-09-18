@@ -1,0 +1,33 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b017-c78a-77c0-a5c2-1109b421f95a",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: bea101\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 50\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\n"
+    }
+  ]
+}

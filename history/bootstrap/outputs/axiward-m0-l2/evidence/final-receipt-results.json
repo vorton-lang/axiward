@@ -1,0 +1,26 @@
+[
+  {
+    "case": "tampered-binary-final",
+    "exitCode": 1,
+    "response": {
+      "reason": "Source or artifact no longer matches the accepted receipt",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "case": "tampered-source-final",
+    "exitCode": 1,
+    "response": {
+      "reason": "Source or artifact no longer matches the accepted receipt",
+      "status": "not-accepted"
+    }
+  },
+  {
+    "case": "stale-policy-final",
+    "exitCode": 1,
+    "response": {
+      "reason": "Receipt belongs to a different policy version",
+      "status": "not-accepted"
+    }
+  }
+]

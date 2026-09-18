@@ -1,0 +1,30 @@
+{
+  "taskId": "01a0aa18-014a-7600-8a33-7d0cc5eb1902",
+  "workPackage": "M0-H2",
+  "inputVersion": "b56688259355e8233c2e702bdea0c947c560256bacb2d64758603a4be2d4c3fa",
+  "reference": "dd93cf5d66d0465e85157cb31f1c9e0d",
+  "processId": "h2-5dc46a6c44f04fcb940826c535a28856",
+  "requestId": 10,
+  "command": [
+    "USER_HOME\\scoop\\apps\\python311\\current\\python.exe",
+    "LEGACY_WORKSPACE\\work\\m0-h2\\run-87828d60b2\\snapshot\\observation.py"
+  ],
+  "cwd": "LEGACY_WORKSPACE\\work\\m0-h2\\run-87828d60b2\\snapshot",
+  "pythonSha256": "5f7b89a612c9b8af1d6456cdfcd1dbe5ca630849e79aebced9bee9a6694952ec",
+  "exitCode": 7,
+  "capReached": false,
+  "completionReceived": true,
+  "inputUnchanged": true,
+  "streams": {
+    "stdout": {
+      "path": "LEGACY_WORKSPACE\\work\\m0-h2\\run-87828d60b2\\dd93cf5d66d0465e85157cb31f1c9e0d-stdout.bin",
+      "bytes": 200062,
+      "sha256": "9cf608f475d47e56d7c8068ef0d243b713fc20f68e23f633b7de0a78a1c1313b"
+    },
+    "stderr": {
+      "path": "LEGACY_WORKSPACE\\work\\m0-h2\\run-87828d60b2\\dd93cf5d66d0465e85157cb31f1c9e0d-stderr.bin",
+      "bytes": 70000,
+      "sha256": "93effd990d84671265df410aea2ec6754e3d041107e7559ae7a57f328be17f8d"
+    }
+  }
+}

@@ -1,0 +1,7 @@
+name = "axiward-l2-probe"
+version = "0.0.0"
+defaultTargets = ["axiward_l2"]
+
+[[lean_exe]]
+name = "axiward_l2"
+root = "Main"

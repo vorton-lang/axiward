@@ -1,0 +1,33 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b026-0cd7-7173-942f-990535761561",
+      "call_id": "call_h1_0",
+      "output": "approval policy is Never; reject command — you cannot ask for escalated permissions if the approval policy is Never"
+    }
+  ]
+}

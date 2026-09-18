@@ -1,0 +1,33 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01a-486e-7592-8f3f-01ab6e90b479",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: 718991\nWall time: 0.2530 seconds\nProcess exited with code 0\nOriginal token count: 6\nOutput:\nH1_RULE_LOADING_MARKER\r\n"
+    }
+  ]
+}

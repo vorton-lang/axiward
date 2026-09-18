@@ -1,0 +1,41 @@
+{
+    "user":  "HOST\\CodexSandboxOnline",
+    "cwd":  "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "results":  [
+                    {
+                        "name":  "read-view",
+                        "allowed":  true,
+                        "value":  "H1 exported view"
+                    },
+                    {
+                        "name":  "write-view",
+                        "allowed":  true,
+                        "value":  "written"
+                    },
+                    {
+                        "name":  "read-repository",
+                        "allowed":  false,
+                        "error":  "Exception calling \"ReadAllText\" with \"1\" argument(s): \"Access to the path \u0027LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt\u0027 is denied.\""
+                    },
+                    {
+                        "name":  "read-repository-traversal",
+                        "allowed":  false,
+                        "error":  "Exception calling \"ReadAllText\" with \"1\" argument(s): \"Access to the path \u0027LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt\u0027 is denied.\""
+                    },
+                    {
+                        "name":  "write-repository",
+                        "allowed":  false,
+                        "error":  "Exception calling \"WriteAllText\" with \"2\" argument(s): \"Access to the path \u0027LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\write-attempt.txt\u0027 is denied.\""
+                    },
+                    {
+                        "name":  "read-other-task",
+                        "allowed":  true,
+                        "value":  "H1 independent task"
+                    },
+                    {
+                        "name":  "write-other-task",
+                        "allowed":  false,
+                        "error":  "Exception calling \"WriteAllText\" with \"2\" argument(s): \"Access to the path \u0027LEGACY_WORKSPACE\\work\\m0-h1\\lab\\other-task\\write-attempt.txt\u0027 is denied.\""
+                    }
+                ]
+}

@@ -1,0 +1,30 @@
+{
+  "status": "completed",
+  "interactiveApprovals": [
+    "mcpServer/elicitation/request",
+    "mcpServer/elicitation/request",
+    "mcpServer/elicitation/request"
+  ],
+  "effectiveApprovalPolicy": "on-request",
+  "threadId": "01a0b02c-437d-7730-a5cc-35afe4868592",
+  "turn": {
+    "id": "01a0b02c-50a5-7232-8222-fc2b326002ba",
+    "items": [
+      {
+        "type": "agentMessage",
+        "id": "msg_h1_5",
+        "text": "Fixed H1 tool sequence complete.",
+        "phase": null,
+        "memoryCitation": null,
+        "delivery": null,
+        "questions": null
+      }
+    ],
+    "itemsView": "summary",
+    "status": "completed",
+    "error": null,
+    "startedAt": 1789662089,
+    "completedAt": 1789662092,
+    "durationMs": 2866
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "passed": [
+    "initialization protection and request replay",
+    "sealed input survives process restart and local edits; concurrent check commits once",
+    "published binary runs from the committed delivery",
+    "wrong-fifo: rejected, package released, raw evidence retained in Git",
+    "sorry: rejected, package released, raw evidence retained in Git",
+    "missing-proof: rejected, package released, raw evidence retained in Git",
+    "concurrent acquisition has exactly one owner",
+    "storage fault injection and journal validation",
+    "delivery tampering prevents state recovery"
+  ],
+  "deliveryCommit": "fd1a90d1c864893e187fb3e8bb0e0b6d017ff8ee684564e8cd6945fe414a5359",
+  "exportedDelivery": "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\delivered",
+  "retainedArtifacts": "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final"
+}

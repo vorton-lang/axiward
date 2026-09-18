@@ -1,0 +1,22 @@
+{
+  "passed": [
+    "unsupported root policy is refused without silently substituting the FIFO goal",
+    "initialization protection and request replay",
+    "sealed input survives process restart and local edits; concurrent check commits once",
+    "published binary runs from the committed delivery",
+    "wrong-fifo: rejected, package released, raw evidence retained in Git",
+    "sorry: rejected, package released, raw evidence retained in Git",
+    "missing-proof: rejected, package released, raw evidence retained in Git",
+    "concurrent acquisition has exactly one owner",
+    "storage fault injection and journal validation",
+    "nested refinement, independent concurrent tasks, automatic upward proofs, runnable combined delivery",
+    "refinement missing a root requirement is rejected before creating children",
+    "different implementations cannot be combined; replacing a route preserves existing child results",
+    "delivery tampering prevents state recovery"
+  ],
+  "deliveryCommit": "ae4f1f7aaa843bcb42a4ba02187192c4cba6e9b5942340bce75244ab7d313a6d",
+  "exportedDelivery": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\verified\\delivered",
+  "retainedArtifacts": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\verified",
+  "combinedCommit": "764fd3357680a2aa3993625c719cef100fa25ac314623b11b8ffbbeba3850257",
+  "combinedDelivery": "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\verified\\combined-delivery"
+}

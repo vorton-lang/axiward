@@ -1,0 +1,11 @@
+info: axiward-m0-l1: no previous manifest, creating one from scratch
+info: toolchain not updated; already up-to-date
+✔ [2/10] Built Axiward.Spec (749ms)
+✔ [3/10] Built Axiward.Queue (798ms)
+✔ [4/10] Built Axiward.Proofs (769ms)
+✔ [5/10] Built Main (803ms)
+✔ [6/10] Built Axiward.Queue:c.o (745ms)
+✔ [7/10] Built Main:c.o (124ms)
+✔ [8/10] Built fifo_demo:exe (309ms)
+✔ [9/10] Built Axiward (724ms)
+Build completed successfully (10 jobs).

@@ -1,0 +1,4 @@
+{
+  "exitCode": 0,
+  "output": "created capacity=2 length=0\nenqueue alpha: accepted=true length=1 capacity=2\nenqueue beta: accepted=true length=2 capacity=2\ndequeue: value=beta length=1 capacity=2\ndequeue: value=alpha length=0 capacity=2\ndequeue: empty length=0 capacity=2"
+}

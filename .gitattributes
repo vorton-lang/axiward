@@ -1,0 +1,2 @@
+# Archived evidence hashes refer to the stored bytes, independent of checkout OS.
+history/bootstrap/** -text

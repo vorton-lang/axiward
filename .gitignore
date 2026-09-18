@@ -1,3 +1,4 @@
 .lake/
 __pycache__/
 dist/
+.work/

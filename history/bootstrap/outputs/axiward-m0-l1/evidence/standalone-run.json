@@ -1,0 +1,6 @@
+{
+  "exitCode": 0,
+  "toolchainOnPath": false,
+  "output": "created capacity=2 length=0\nenqueue alpha: accepted=true length=1 capacity=2\nenqueue beta: accepted=true length=2 capacity=2\nenqueue gamma: accepted=false length=2 capacity=2\ndequeue: value=alpha length=1 capacity=2\ndequeue: value=beta length=0 capacity=2\ndequeue: empty length=0 capacity=2",
+  "executableSha256": "B22B7FD9178A2991489AC6208C31E7D98E1B7B450D35E5899623D6BE1742B814"
+}

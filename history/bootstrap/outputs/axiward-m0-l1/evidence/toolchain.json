@@ -1,0 +1,21 @@
+{
+  "package": "M0-L1",
+  "tag": "v4.34.0",
+  "release": "https://github.com/leanprover/lean4/releases/tag/v4.34.0",
+  "releasePublishedAt": "2026-09-14T14:04:36Z",
+  "download": "https://github.com/leanprover/lean4/releases/download/v4.34.0/lean-4.34.0-windows.tar.zst",
+  "bytes": 588837341,
+  "expectedSha256": "c07e88d1fe4839ec96a79f54637b2a3a983ea6c5b7e82ff35afa22a7700a86b7",
+  "observedSha256": "c07e88d1fe4839ec96a79f54637b2a3a983ea6c5b7e82ff35afa22a7700a86b7",
+  "leanCommit": "293d5d0c0c3f3dded4688b3ccd6a33939ac5102b",
+  "portableDirectory": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows",
+  "platform": "Microsoft Windows 10.0.26200",
+  "architecture": "X64",
+  "powershell": "7.6.6",
+  "approvedInput": "evidence/approved-plan-at-start.md",
+  "approvedInputSha256": "90CCCF4FC6C2E0293DBFA17C8DFE3645FD18FE2D3626E9278C1DA345B1ADFA7C",
+  "probeNotes": [
+    "PATH initially had no lean, lake, elan; portable distribution used.",
+    "A leanchecker --help probe did not display help: this version ignores unknown flags and began broad checking. Its exact probe process was stopped. Subsequent use specifies --fresh and one module explicitly."
+  ]
+}

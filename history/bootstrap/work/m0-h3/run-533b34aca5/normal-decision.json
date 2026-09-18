@@ -1,0 +1,9 @@
+{
+  "question": "normal",
+  "toolRequest": 3,
+  "elicitationId": "h3-b325020dbd5845be8fc008439a01d741",
+  "artifactVersion": "375d29dd1990ba4ecb71bdd6d69324d8d28527da868c291b270d2033f55de081",
+  "specVersion": "b319453da3bbf969c2e5d32815d59fd71904fc74ddc8b7b19d63a4f929f322b1",
+  "decision": "approve",
+  "source": "native-mcp-elicitation-test-client"
+}

@@ -1,0 +1,39 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-ed08-7241-8750-869ebaa240f8",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: 1bfe8d\nWall time: 0.1826 seconds\nProcess exited with code 1\nOriginal token count: 111\nOutput:\nMethodInvocationException: \r\nLine |\r\n   2 |  [IO.File]::ReadAllText('USER_HOME/Documents/Codex/2026-09- …\r\n     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | 调用“ReadAllText”并传入“1”个参数时发生异常：“Access to the path 'LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt' is denied.”\r\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-f2e4-7672-b01b-c5e71e7199fe",
+      "call_id": "call_h1_1",
+      "output": "Chunk ID: 05ca58\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 50\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\n"
+    }
+  ]
+}

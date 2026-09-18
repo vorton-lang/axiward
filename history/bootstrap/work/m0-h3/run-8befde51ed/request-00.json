@@ -1,0 +1,51 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resources",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resource_templates",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "read_mcp_resource",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "ask",
+      "type": "function",
+      "namespace": "mcp__axiward_h3"
+    },
+    {
+      "name": null,
+      "type": "web_search",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": []
+}

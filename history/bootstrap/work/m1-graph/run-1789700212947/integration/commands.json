@@ -1,0 +1,150 @@
+[
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-graph\\\\run-1789700212947\\\\integration\\\\accepted.git\",\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"18b2869f44f3243629d533fe569713ea4432260e770aa91eb4c7f4b0c411d45e\",\"nodes\":[{\"domain\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"route\":null,\"support\":null}],\"rootClosed\":false,\"state\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":0}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 1,
+    "stdout": "{\"error\":\"initialization requires a new directory\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"18b2869f44f3243629d533fe569713ea4432260e770aa91eb4c7f4b0c411d45e\",\"nodes\":[{\"domain\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"route\":null,\"support\":null}],\"rootClosed\":false,\"state\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":0}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"f0457e43d099b07b60c999108b5ac7dfbb1ad61d66c8b541864582bacd3ca4a3\",\"nodes\":[{\"domain\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"route\":null,\"support\":null}],\"rootClosed\":false,\"state\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"f0457e43d099b07b60c999108b5ac7dfbb1ad61d66c8b541864582bacd3ca4a3\",\"nodes\":[{\"domain\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"route\":null,\"support\":null}],\"rootClosed\":false,\"state\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "begin",
+      "other"
+    ],
+    "exit": 1,
+    "stdout": "{\"error\":\"Axiward.Fault.requestConflict\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "submit",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "submit",
+      "worker",
+      "0",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\editable-candidate"
+    ],
+    "exit": 0,
+    "stdout": "{\"sealed\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"f28fd95f6548baca6428ae1feb85297861a05a769962a2df02d675ce5272965f\",\"nodes\":[{\"domain\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":{\"checking\":{\"candidate\":{\"tree\":\"b10f07126685630706ad9ca3c2e7845baa29e7e43ac1c1c0312358779225591c\"}}},\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"route\":null,\"support\":null}],\"rootClosed\":false,\"state\":{\"active\":{\"action\":\"execute\",\"input\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":{\"checking\":{\"candidate\":{\"tree\":\"b10f07126685630706ad9ca3c2e7845baa29e7e43ac1c1c0312358779225591c\"}}},\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"c4a0fe2294ddd2798e6f4cae1b71c885671042dce26b49e31babc853a6c88f7a\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":2}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"rejected\":{\"reason\":\"02-audit did not pass\",\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-graph\\run-1789700212947\\integration\\accepted.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"rejected\":{\"reason\":\"02-audit did not pass\",\"serial\":0}}\n",
+    "stderr": ""
+  }
+]

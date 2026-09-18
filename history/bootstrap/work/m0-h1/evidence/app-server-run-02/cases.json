@@ -1,0 +1,32 @@
+[
+  {
+    "name": "direct-repository-read",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "[IO.File]::ReadAllText('LEGACY_WORKSPACE/work/m0-h1/lab/repository/private.txt')"
+  },
+  {
+    "arguments": {},
+    "name": "mcp-status",
+    "namespace": "mcp__axiward_h1",
+    "tool": "status"
+  },
+  {
+    "arguments": {},
+    "name": "mcp-submit",
+    "namespace": "mcp__axiward_h1",
+    "tool": "submit"
+  },
+  {
+    "arguments": {
+      "command": "decide"
+    },
+    "name": "mcp-reject-extra",
+    "namespace": "mcp__axiward_h1",
+    "tool": "status"
+  },
+  {
+    "name": "copied-executable",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& './axiward_probe.exe' status"
+  }
+]

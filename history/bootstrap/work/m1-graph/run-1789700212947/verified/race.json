@@ -1,0 +1,12 @@
+[
+  {
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "exit": 1,
+    "stdout": "{\"error\":\"Axiward.Fault.occupied\"}\n",
+    "stderr": ""
+  }
+]

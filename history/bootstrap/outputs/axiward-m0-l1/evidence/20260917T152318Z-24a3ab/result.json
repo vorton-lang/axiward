@@ -1,0 +1,266 @@
+{
+  "package": "M0-L1",
+  "kind": "exploration",
+  "startedUtc": "2026-09-17T15:23:18.9275910Z",
+  "status": "passed",
+  "sourceRoot": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1",
+  "leanBin": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin",
+  "observerSha256": "64329E12CDF76380DAB3F021F25187E7F000488164AC9C4AFBE0B463BC139739",
+  "commands": [
+    {
+      "name": "01-lean-version",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lean.exe",
+      "arguments": [
+        "--version"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "01-lean-version.log",
+      "startedUtc": "2026-09-17T15:23:18.9655513Z",
+      "durationSeconds": 0.0667399
+    },
+    {
+      "name": "02-lake-version",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--version"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "02-lake-version.log",
+      "startedUtc": "2026-09-17T15:23:19.0438042Z",
+      "durationSeconds": 0.0593724
+    },
+    {
+      "name": "03-build",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--no-cache",
+        "--wfail",
+        "build"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "03-build.log",
+      "startedUtc": "2026-09-17T15:23:19.1042128Z",
+      "durationSeconds": 2.3820474
+    },
+    {
+      "name": "04-axioms",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "env",
+        "lean",
+        "-DwarningAsError=true",
+        "Audit.lean"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "04-axioms.log",
+      "startedUtc": "2026-09-17T15:23:21.4871123Z",
+      "durationSeconds": 0.765286
+    },
+    {
+      "name": "05-kernel-replay",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "env",
+        "leanchecker",
+        "--fresh",
+        "Axiward.Proofs"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "05-kernel-replay.log",
+      "startedUtc": "2026-09-17T15:23:22.2577459Z",
+      "durationSeconds": 116.4759382
+    },
+    {
+      "name": "06-runtime-fifo",
+      "file": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project\\.lake\\build\\bin\\fifo_demo.exe",
+      "arguments": [
+        "2",
+        "alpha",
+        "beta",
+        "gamma"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "06-runtime-fifo.log",
+      "startedUtc": "2026-09-17T15:25:18.7344947Z",
+      "durationSeconds": 0.0426099
+    },
+    {
+      "name": "07-runtime-zero",
+      "file": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project\\.lake\\build\\bin\\fifo_demo.exe",
+      "arguments": [
+        "0",
+        "alpha"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\project",
+      "exitCode": 0,
+      "log": "07-runtime-zero.log",
+      "startedUtc": "2026-09-17T15:25:18.7795074Z",
+      "durationSeconds": 0.0387409
+    },
+    {
+      "name": "08-mutant-build-executable",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--no-cache",
+        "--wfail",
+        "build",
+        "fifo_demo"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\mutant",
+      "exitCode": 0,
+      "log": "08-mutant-build-executable.log",
+      "startedUtc": "2026-09-17T15:25:18.8463729Z",
+      "durationSeconds": 2.2441932
+    },
+    {
+      "name": "09-mutant-runtime",
+      "file": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\mutant\\.lake\\build\\bin\\fifo_demo.exe",
+      "arguments": [
+        "2",
+        "alpha",
+        "beta"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\mutant",
+      "exitCode": 0,
+      "log": "09-mutant-runtime.log",
+      "startedUtc": "2026-09-17T15:25:21.0910904Z",
+      "durationSeconds": 0.0432812
+    },
+    {
+      "name": "10-mutant-proof-rejected",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--no-cache",
+        "--wfail",
+        "build",
+        "Axiward"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152318Z-24a3ab\\mutant",
+      "exitCode": 1,
+      "log": "10-mutant-proof-rejected.log",
+      "startedUtc": "2026-09-17T15:25:21.1361283Z",
+      "durationSeconds": 1.7103321
+    }
+  ],
+  "inputs": [
+    {
+      "path": "lean-toolchain",
+      "sha256": "8733782DC070A99B312039CDA424F601B80F3BE6F6F512627DA5BA25ADC27632"
+    },
+    {
+      "path": "lakefile.toml",
+      "sha256": "6D26BC7B90D1D999E77EC607182347603DE196CAAAED73675B3A21B28626FB31"
+    },
+    {
+      "path": "Axiward.lean",
+      "sha256": "8AA178436F2A6AA4DCBD0DF4616BE48E911EEAFBF920F17A38F83A91A6A27F76"
+    },
+    {
+      "path": "Audit.lean",
+      "sha256": "F983DEC6592F60D7B8274889F84C25F21E847CBF1DA2D1C2AF5D9479F11FDEAB"
+    },
+    {
+      "path": "Main.lean",
+      "sha256": "1B919D415B87DF03A2DF754978E9E869E69CDCDC6D6698F8DE76D9FC60D1804D"
+    },
+    {
+      "path": "Axiward/Spec.lean",
+      "sha256": "42FD9EABCEB7EAAB1344433943BFB21504DECD6955AC154E07FD9B329FE51B6A"
+    },
+    {
+      "path": "Axiward/Queue.lean",
+      "sha256": "895A532744A591BF38B1ED6723565C1145FFEEE6EA1081575CCF3B9E4F730472"
+    },
+    {
+      "path": "Axiward/Proofs.lean",
+      "sha256": "6A95086DFB36C832B85F179CA7094E94035FAF5851ABD5FFF70417AEE7303861"
+    }
+  ],
+  "toolExecutables": [
+    {
+      "name": "lean.exe",
+      "sha256": "A8040E2CAB341C12116AB591FED9F761816F5F6B08554F6CC1680E86DFBBA0A2"
+    },
+    {
+      "name": "lake.exe",
+      "sha256": "BE8ABE1BECB890372C99FBC945193DE136751DB03EE104DD3A6D307AB4B6B567"
+    },
+    {
+      "name": "leanchecker.exe",
+      "sha256": "53F1ABD611A6F3733787794A4DCBC3A925963431D1A8479531F986A2E4F41903"
+    },
+    {
+      "name": "clang.exe",
+      "sha256": "1AEA18DCA98F91A6A7C65532ADC2567EFC775904D2A4BD28BF06731BC2C3778C"
+    },
+    {
+      "name": "ld.lld.exe",
+      "sha256": "675E59F33F11CB90500577F116082ED4A6214FCAC3A1BAD88D6323AA0373179F"
+    }
+  ],
+  "leanVersion": "Lean (version 4.34.0, x86_64-w64-windows-gnu, commit 293d5d0c0c3f3dded4688b3ccd6a33939ac5102b, Release)",
+  "lakeVersion": "Lake version 5.0.0-src+293d5d0 (Lean version 4.34.0)",
+  "mutantInputs": [
+    {
+      "path": "lean-toolchain",
+      "sha256": "8733782DC070A99B312039CDA424F601B80F3BE6F6F512627DA5BA25ADC27632"
+    },
+    {
+      "path": "lakefile.toml",
+      "sha256": "6D26BC7B90D1D999E77EC607182347603DE196CAAAED73675B3A21B28626FB31"
+    },
+    {
+      "path": "Axiward.lean",
+      "sha256": "8AA178436F2A6AA4DCBD0DF4616BE48E911EEAFBF920F17A38F83A91A6A27F76"
+    },
+    {
+      "path": "Audit.lean",
+      "sha256": "F983DEC6592F60D7B8274889F84C25F21E847CBF1DA2D1C2AF5D9479F11FDEAB"
+    },
+    {
+      "path": "Main.lean",
+      "sha256": "1B919D415B87DF03A2DF754978E9E869E69CDCDC6D6698F8DE76D9FC60D1804D"
+    },
+    {
+      "path": "Axiward/Spec.lean",
+      "sha256": "42FD9EABCEB7EAAB1344433943BFB21504DECD6955AC154E07FD9B329FE51B6A"
+    },
+    {
+      "path": "Axiward/Queue.lean",
+      "sha256": "2955986456F54ED75059FB6E28ACFF24C467C0337B2EFD6B764F73CE66DE909A"
+    },
+    {
+      "path": "Axiward/Proofs.lean",
+      "sha256": "6A95086DFB36C832B85F179CA7094E94035FAF5851ABD5FFF70417AEE7303861"
+    }
+  ],
+  "mutation": {
+    "replacement": "let nextItems := item :: q.items",
+    "original": "let nextItems := q.items ++ [item]"
+  },
+  "products": [
+    {
+      "path": "project/.lake/build/bin/fifo_demo.exe",
+      "sha256": "B22B7FD9178A2991489AC6208C31E7D98E1B7B450D35E5899623D6BE1742B814"
+    },
+    {
+      "path": "project/.lake/build/ir/Axiward/Queue.c",
+      "sha256": "CEC117427930AA764FCDA517731D533A298563B36D4B52585B2C142BC2E50D98"
+    },
+    {
+      "path": "project/.lake/build/lib/lean/Axiward/Queue.olean",
+      "sha256": "1E5377F8823D5F661260BED9A6D68063D2A302DD093C66AC1AA7EFB36775A866"
+    },
+    {
+      "path": "project/.lake/build/lib/lean/Axiward/Proofs.olean",
+      "sha256": "E02DF5BB0B856DEC154F9CD398581C2249068591CA83F806F10DA40AAE2B96F7"
+    }
+  ],
+  "finishedUtc": "2026-09-17T15:25:22.8659669Z"
+}

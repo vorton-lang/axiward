@@ -1,0 +1,4 @@
+{"timestamp":"2026-09-17T17:12:31.589619Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
+{"timestamp":"2026-09-17T17:12:31.591635Z","level":"WARN","fields":{"message":"Failed to create shell snapshot for powershell: Shell snapshot not supported yet for PowerShell"},"target":"codex_core::shell_snapshot"}
+{"timestamp":"2026-09-17T17:12:31.676155Z","level":"WARN","fields":{"message":"Unknown model axiward-h1-fixture is used. This will use fallback model metadata."},"target":"codex_models_manager::model_info"}
+{"timestamp":"2026-09-17T17:12:34.252044Z","level":"ERROR","fields":{"message":"failed to submit ResolveElicitation: internal error; agent loop died unexpectedly"},"target":"codex_app_server::bespoke_event_handling"}

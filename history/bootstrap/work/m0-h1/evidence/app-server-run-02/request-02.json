@@ -1,0 +1,73 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resources",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resource_templates",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "read_mcp_resource",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "status",
+      "type": "function",
+      "namespace": "mcp__axiward_h1"
+    },
+    {
+      "name": "submit",
+      "type": "function",
+      "namespace": "mcp__axiward_h1"
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b02a-9dad-7371-8f7d-1e66e221a6e8",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: b8242b\nWall time: 0.1433 seconds\nProcess exited with code 1\nOriginal token count: 111\nOutput:\nMethodInvocationException: \r\nLine |\r\n   2 |  [IO.File]::ReadAllText('USER_HOME/Documents/Codex/2026-09- …\r\n     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | 调用“ReadAllText”并传入“1”个参数时发生异常：“Access to the path 'LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt' is denied.”\r\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b02a-9db9-7923-a9c9-7957e8cc616b",
+      "call_id": "call_h1_1",
+      "output": [
+        {
+          "type": "input_text",
+          "text": "Wall time: 0.0014 seconds\nOutput:"
+        },
+        {
+          "type": "input_text",
+          "text": "user rejected MCP tool call"
+        }
+      ]
+    }
+  ]
+}

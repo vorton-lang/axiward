@@ -1,0 +1,13 @@
+✔ [3/6] Built Axiward.Spec (783ms)
+✖ [4/6] Building Axiward.Proofs (762ms)
+error: build failed
+trace: .> LEAN_PATH=LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\.lake\build\lib\lean LEGACY_WORKSPACE\work\m0-l1\lean-4.34.0-windows\bin\lean.exe LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\Axiward\Proofs.lean -o LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\.lake\build\lib\lean\Axiward\Proofs.olean -i LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\.lake\build\lib\lean\Axiward\Proofs.ilean -c LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\.lake\build\ir\Axiward\Proofs.c --setup LEGACY_WORKSPACE\outputs\axiward-m0-l1\evidence\20260917T152318Z-24a3ab\mutant\.lake\build\ir\Axiward\Proofs.setup.json --json
+error: Axiward/Proofs.lean:14:81: unsolved goals
+α : Type u
+n : Nat
+q : Queue α n
+item : α
+room : q.items.length < n
+⊢ item :: q.items = q.items ++ [item]
+Some required targets logged failures:
+- Axiward.Proofs

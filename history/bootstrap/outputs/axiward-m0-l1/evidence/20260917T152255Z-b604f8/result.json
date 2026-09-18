@@ -1,0 +1,109 @@
+{
+  "package": "M0-L1",
+  "kind": "exploration",
+  "startedUtc": "2026-09-17T15:22:55.1976620Z",
+  "status": "failed",
+  "sourceRoot": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1",
+  "leanBin": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin",
+  "observerSha256": "64329E12CDF76380DAB3F021F25187E7F000488164AC9C4AFBE0B463BC139739",
+  "commands": [
+    {
+      "name": "01-lean-version",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lean.exe",
+      "arguments": [
+        "--version"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152255Z-b604f8\\project",
+      "exitCode": 0,
+      "log": "01-lean-version.log",
+      "startedUtc": "2026-09-17T15:22:55.2370075Z",
+      "durationSeconds": 0.0702379
+    },
+    {
+      "name": "02-lake-version",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--version"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152255Z-b604f8\\project",
+      "exitCode": 0,
+      "log": "02-lake-version.log",
+      "startedUtc": "2026-09-17T15:22:55.3198141Z",
+      "durationSeconds": 0.0664033
+    },
+    {
+      "name": "03-build",
+      "file": "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows\\bin\\lake.exe",
+      "arguments": [
+        "--no-cache",
+        "--wfail",
+        "build"
+      ],
+      "cwd": "LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152255Z-b604f8\\project",
+      "exitCode": 1,
+      "log": "03-build.log",
+      "startedUtc": "2026-09-17T15:22:55.3872569Z",
+      "durationSeconds": 0.9473366
+    }
+  ],
+  "inputs": [
+    {
+      "path": "lean-toolchain",
+      "sha256": "8733782DC070A99B312039CDA424F601B80F3BE6F6F512627DA5BA25ADC27632"
+    },
+    {
+      "path": "lakefile.toml",
+      "sha256": "6D26BC7B90D1D999E77EC607182347603DE196CAAAED73675B3A21B28626FB31"
+    },
+    {
+      "path": "Axiward.lean",
+      "sha256": "8AA178436F2A6AA4DCBD0DF4616BE48E911EEAFBF920F17A38F83A91A6A27F76"
+    },
+    {
+      "path": "Audit.lean",
+      "sha256": "F983DEC6592F60D7B8274889F84C25F21E847CBF1DA2D1C2AF5D9479F11FDEAB"
+    },
+    {
+      "path": "Main.lean",
+      "sha256": "1B919D415B87DF03A2DF754978E9E869E69CDCDC6D6698F8DE76D9FC60D1804D"
+    },
+    {
+      "path": "Axiward/Spec.lean",
+      "sha256": "42FD9EABCEB7EAAB1344433943BFB21504DECD6955AC154E07FD9B329FE51B6A"
+    },
+    {
+      "path": "Axiward/Queue.lean",
+      "sha256": "DE020B930F0485F67E8D2F71337A0D49BEB05C98CFEBF29A5175648C38D5AEA9"
+    },
+    {
+      "path": "Axiward/Proofs.lean",
+      "sha256": "6A95086DFB36C832B85F179CA7094E94035FAF5851ABD5FFF70417AEE7303861"
+    }
+  ],
+  "toolExecutables": [
+    {
+      "name": "lean.exe",
+      "sha256": "A8040E2CAB341C12116AB591FED9F761816F5F6B08554F6CC1680E86DFBBA0A2"
+    },
+    {
+      "name": "lake.exe",
+      "sha256": "BE8ABE1BECB890372C99FBC945193DE136751DB03EE104DD3A6D307AB4B6B567"
+    },
+    {
+      "name": "leanchecker.exe",
+      "sha256": "53F1ABD611A6F3733787794A4DCBC3A925963431D1A8479531F986A2E4F41903"
+    },
+    {
+      "name": "clang.exe",
+      "sha256": "1AEA18DCA98F91A6A7C65532ADC2567EFC775904D2A4BD28BF06731BC2C3778C"
+    },
+    {
+      "name": "ld.lld.exe",
+      "sha256": "675E59F33F11CB90500577F116082ED4A6214FCAC3A1BAD88D6323AA0373179F"
+    }
+  ],
+  "leanVersion": "Lean (version 4.34.0, x86_64-w64-windows-gnu, commit 293d5d0c0c3f3dded4688b3ccd6a33939ac5102b, Release)",
+  "lakeVersion": "Lake version 5.0.0-src+293d5d0 (Lean version 4.34.0)",
+  "failure": "Unexpected exit for 03-build (1). Read LEGACY_WORKSPACE\\outputs\\axiward-m0-l1\\evidence\\20260917T152255Z-b604f8\\03-build.log",
+  "finishedUtc": "2026-09-17T15:22:56.3477298Z"
+}

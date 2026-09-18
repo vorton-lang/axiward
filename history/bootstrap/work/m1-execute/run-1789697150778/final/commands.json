@@ -1,0 +1,580 @@
+[
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-execute\\\\run-1789697150778\\\\final\\\\accepted.git\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"05e5123060b7c6c1291c962bb4b34b74b892de1fca5bad78bc175e8b54f73e64\",\"state\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":0}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 1,
+    "stdout": "{\"error\":\"initialization requires a new directory\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"05e5123060b7c6c1291c962bb4b34b74b892de1fca5bad78bc175e8b54f73e64\",\"state\":{\"active\":null,\"nextSerial\":0,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":0}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"c16ad9a1d1f9243b620d7dbfe062af3bf62d94f702cd904a7d8e7034d2c3e55b\",\"state\":{\"active\":{\"input\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"c16ad9a1d1f9243b620d7dbfe062af3bf62d94f702cd904a7d8e7034d2c3e55b\",\"state\":{\"active\":{\"input\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "begin",
+      "other"
+    ],
+    "exit": 1,
+    "stdout": "{\"error\":\"Axiward.Fault.requestConflict\"}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "submit",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "submit",
+      "worker",
+      "0",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\editable-candidate"
+    ],
+    "exit": 0,
+    "stdout": "{\"sealed\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"48143ea42b7f2b915a0251885f12b4289d17ac9935874f868aa347793f63ce9c\",\"state\":{\"active\":{\"input\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker\",\"phase\":{\"checking\":{\"candidate\":{\"tree\":\"b10f07126685630706ad9ca3c2e7845baa29e7e43ac1c1c0312358779225591c\"}}},\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":2}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"accepted\":{\"serial\":0}}\n",
+    "stderr": "Verifier evidence: LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git\\axiward-work\\run-5564064186100-471217742\n"
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"accepted\":{\"serial\":0}}\n",
+    "stderr": "Verifier evidence: LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git\\axiward-work\\run-5564064209600-978933195\n"
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"fd1a90d1c864893e187fb3e8bb0e0b6d017ff8ee684564e8cd6945fe414a5359\",\"state\":{\"active\":null,\"nextSerial\":1,\"published\":{\"candidate\":{\"tree\":\"b10f07126685630706ad9ca3c2e7845baa29e7e43ac1c1c0312358779225591c\"},\"product\":\"9ead7b712b796178a0ac48b464050fa04950dac681ff1f4125f880950e56294d\",\"receipt\":\"7317443d4a6c2e36d2572a30aa89d5c671dd06d55b98de81aeff811cd2a3b04a\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":3}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"accepted\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"fd1a90d1c864893e187fb3e8bb0e0b6d017ff8ee684564e8cd6945fe414a5359\",\"state\":{\"active\":null,\"nextSerial\":1,\"published\":{\"candidate\":{\"tree\":\"b10f07126685630706ad9ca3c2e7845baa29e7e43ac1c1c0312358779225591c\"},\"product\":\"9ead7b712b796178a0ac48b464050fa04950dac681ff1f4125f880950e56294d\",\"receipt\":\"7317443d4a6c2e36d2572a30aa89d5c671dd06d55b98de81aeff811cd2a3b04a\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":3}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "clone",
+      "--quiet",
+      "--no-hardlinks",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\delivered"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\delivered\\product\\.lake\\build\\bin\\fifo_demo.exe",
+      "2",
+      "a",
+      "b",
+      "c"
+    ],
+    "exit": 0,
+    "stdout": "created capacity=2 length=0\nenqueue a: accepted=true length=1 capacity=2\nenqueue b: accepted=true length=2 capacity=2\nenqueue c: accepted=false length=2 capacity=2\ndequeue: value=a length=1 capacity=2\ndequeue: value=b length=0 capacity=2\ndequeue: empty length=0 capacity=2\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-execute\\\\run-1789697150778\\\\final\\\\wrong-fifo.git\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "submit",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git",
+      "submit",
+      "worker",
+      "0",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\candidate-wrong-fifo"
+    ],
+    "exit": 0,
+    "stdout": "{\"sealed\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"rejected\":{\"reason\":\"01-build did not pass\",\"serial\":0}}\n",
+    "stderr": "Verifier evidence: LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git\\axiward-work\\run-5589393006600-656669109\n"
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"9aa193f96917a9350db85754d4fab6f3f354a5e1ac7099128ffa9e22f5a30441\",\"state\":{\"active\":null,\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":3}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\wrong-fifo.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "HEAD",
+      ".axiward/checks/0"
+    ],
+    "exit": 0,
+    "stdout": ".axiward/checks/0/01-build.json\n.axiward/checks/0/input.json\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-execute\\\\run-1789697150778\\\\final\\\\sorry.git\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "submit",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git",
+      "submit",
+      "worker",
+      "0",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\candidate-sorry"
+    ],
+    "exit": 0,
+    "stdout": "{\"sealed\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"rejected\":{\"reason\":\"02-audit did not pass\",\"serial\":0}}\n",
+    "stderr": "Verifier evidence: LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git\\axiward-work\\run-5599810371400-248150150\n"
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"2cc609c22f472cac5bb0dde8ad868c5109571ab56b07ec9125aa193111dcca08\",\"state\":{\"active\":null,\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":3}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\sorry.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "HEAD",
+      ".axiward/checks/0"
+    ],
+    "exit": 0,
+    "stdout": ".axiward/checks/0/01-build.json\n.axiward/checks/0/02-audit.json\n.axiward/checks/0/input.json\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-execute\\\\run-1789697150778\\\\final\\\\missing-proof.git\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "begin",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git",
+      "begin",
+      "worker"
+    ],
+    "exit": 0,
+    "stdout": "{\"acquired\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "submit",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git",
+      "submit",
+      "worker",
+      "0",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\candidate-missing-proof"
+    ],
+    "exit": 0,
+    "stdout": "{\"sealed\":{\"serial\":0}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "check",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git",
+      "check",
+      "0"
+    ],
+    "exit": 0,
+    "stdout": "{\"rejected\":{\"reason\":\"01-build did not pass\",\"serial\":0}}\n",
+    "stderr": "Verifier evidence: LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git\\axiward-work\\run-5612125284800-657238563\n"
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"25091df148ea138dd2dbc46e810411642bef466fb657e77e2065427579500804\",\"state\":{\"active\":null,\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":3}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\missing-proof.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "HEAD",
+      ".axiward/checks/0"
+    ],
+    "exit": 0,
+    "stdout": ".axiward/checks/0/01-build.json\n.axiward/checks/0/input.json\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "init",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\race.git",
+      "USER_HOME\\Desktop\\axiward\\examples\\fifo\\policy",
+      "LEGACY_WORKSPACE\\work\\m0-l1\\lean-4.34.0-windows"
+    ],
+    "exit": 0,
+    "stdout": "{\"initialized\":\"C:\\\\Users\\\\Yufeng Ying\\\\Documents\\\\Codex\\\\2026-09-16\\\\chatgpt-conversation-6aaa19fe-efb4-83e9-ba53\\\\work\\\\m1-execute\\\\run-1789697150778\\\\final\\\\race.git\",\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\race.git"
+    ],
+    "exit": 0,
+    "stdout": "{\"head\":\"754200e65227b1090d949a65feb7bab9840981863b3e2a98ba101791e8c61758\",\"state\":{\"active\":{\"input\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"},\"owner\":\"worker-0\",\"phase\":\"drafting\",\"serial\":0},\"nextSerial\":1,\"published\":null,\"scope\":{\"policy\":\"e40b43175eec99ed50bb3dff5973428bfb768037bff70e8939350d9d9eac5761\",\"revision\":0,\"specification\":\"7549e411eab0edd97f7bf441bcc18aba15cbd6a7c3e2f11a0e783850a7b7ac21\"}},\"transitions\":1}\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\store_scenarios.exe",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\storage.git"
+    ],
+    "exit": 0,
+    "stdout": "PASS: stale CAS, source preservation, replay, request conflict, owner check, sealed recovery, stale scope, corrupt journal\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "read-tree",
+      "HEAD"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "hash-object",
+      "-w",
+      "--stdin"
+    ],
+    "exit": 0,
+    "stdout": "eafede5b03159264c6d838e99729ea3a652da69987986f52d65c20aee7841a50\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "update-index",
+      "--add",
+      "--cacheinfo",
+      "100644",
+      "eafede5b03159264c6d838e99729ea3a652da69987986f52d65c20aee7841a50",
+      "product/.lake/build/bin/fifo_demo.exe"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "write-tree"
+    ],
+    "exit": 0,
+    "stdout": "d9ddc2cde71a79077d5266f1f872990343a0433b118e05b7765c5007c469e143\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "commit-tree",
+      "d9ddc2cde71a79077d5266f1f872990343a0433b118e05b7765c5007c469e143",
+      "-p",
+      "fd1a90d1c864893e187fb3e8bb0e0b6d017ff8ee684564e8cd6945fe414a5359"
+    ],
+    "exit": 0,
+    "stdout": "46a1692ddfd712206a2341bf4d0cf1c642652266601c0dca3872cc90d16449cb\n",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "git",
+      "--git-dir=LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git",
+      "-c",
+      "user.name=Axiward tests",
+      "-c",
+      "user.email=tests@localhost",
+      "update-ref",
+      "refs/heads/main",
+      "46a1692ddfd712206a2341bf4d0cf1c642652266601c0dca3872cc90d16449cb",
+      "fd1a90d1c864893e187fb3e8bb0e0b6d017ff8ee684564e8cd6945fe414a5359"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  },
+  {
+    "argv": [
+      "USER_HOME\\Desktop\\axiward\\.lake\\build\\bin\\axiward.exe",
+      "status",
+      "LEGACY_WORKSPACE\\work\\m1-execute\\run-1789697150778\\final\\accepted.git"
+    ],
+    "exit": 1,
+    "stdout": "{\"error\":\"published product or receipt differs from journal\"}\n",
+    "stderr": ""
+  }
+]

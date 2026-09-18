@@ -1,0 +1,88 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resources",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "list_mcp_resource_templates",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "read_mcp_resource",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "js",
+      "type": "function",
+      "namespace": "mcp__node_repl"
+    },
+    {
+      "name": "js_add_node_module_dir",
+      "type": "function",
+      "namespace": "mcp__node_repl"
+    },
+    {
+      "name": "js_reset",
+      "type": "function",
+      "namespace": "mcp__node_repl"
+    },
+    {
+      "name": "fetch_openai_doc",
+      "type": "function",
+      "namespace": "mcp__openaiDeveloperDocs"
+    },
+    {
+      "name": "get_openapi_spec",
+      "type": "function",
+      "namespace": "mcp__openaiDeveloperDocs"
+    },
+    {
+      "name": "list_api_endpoints",
+      "type": "function",
+      "namespace": "mcp__openaiDeveloperDocs"
+    },
+    {
+      "name": "list_openai_docs",
+      "type": "function",
+      "namespace": "mcp__openaiDeveloperDocs"
+    },
+    {
+      "name": "search_openai_docs",
+      "type": "function",
+      "namespace": "mcp__openaiDeveloperDocs"
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b028-6992-7ed0-820b-9465610cb4d3",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: 5f520c\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 60\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\nidentity=HOST\\codexsandboxonline\n"
+    }
+  ]
+}

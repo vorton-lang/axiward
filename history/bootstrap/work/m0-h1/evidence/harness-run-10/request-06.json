@@ -1,0 +1,63 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-ed08-7241-8750-869ebaa240f8",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: 1bfe8d\nWall time: 0.1826 seconds\nProcess exited with code 1\nOriginal token count: 111\nOutput:\nMethodInvocationException: \r\nLine |\r\n   2 |  [IO.File]::ReadAllText('USER_HOME/Documents/Codex/2026-09- …\r\n     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | 调用“ReadAllText”并传入“1”个参数时发生异常：“Access to the path 'LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt' is denied.”\r\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-f2e4-7672-b01b-c5e71e7199fe",
+      "call_id": "call_h1_1",
+      "output": "Chunk ID: 05ca58\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 50\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-f80d-72a2-af99-22a365e62798",
+      "call_id": "call_h1_2",
+      "output": "Chunk ID: fff18b\nWall time: 0.1327 seconds\nProcess exited with code 1\nOriginal token count: 15\nOutput:\nonly exact status, submit, or decide commands are accepted\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-fce7-7692-8a0f-8eadfc65d0fe",
+      "call_id": "call_h1_3",
+      "output": "Chunk ID: d556cf\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 49\nOutput:\nprobe IO failure: permission denied (error code: 13)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\accepted.txt\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b01f-fcff-73d3-8790-d9ca9d5b9253",
+      "call_id": "call_h1_4",
+      "output": "exec_command failed: CreateProcess { message: \"Rejected(\\\"`\\\\\\\"C:\\\\\\\\\\\\\\\\Program Files\\\\\\\\\\\\\\\\PowerShell\\\\\\\\\\\\\\\\7\\\\\\\\\\\\\\\\pwsh.exe\\\\\\\" -Command \\\\\\\"& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' decide\\\\\\\"` rejected: policy forbids commands starting with `\\\\\\\"C:\\\\\\\\\\\\\\\\Program Files\\\\\\\\\\\\\\\\PowerShell\\\\\\\\\\\\\\\\7\\\\\\\\\\\\\\\\pwsh.exe\\\\\\\" -Command \\\\\\\"& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' decide\\\\\\\"`\\\")\" }"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b020-01f4-7683-8b0e-a00969effa90",
+      "call_id": "call_h1_5",
+      "output": "Chunk ID: cb6207\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 50\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\n"
+    }
+  ]
+}

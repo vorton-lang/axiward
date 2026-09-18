@@ -1,0 +1,57 @@
+{
+  "model": "axiward-h1-fixture",
+  "tools": [
+    {
+      "name": "exec_command",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "write_stdin",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "request_user_input",
+      "type": "function",
+      "namespace": null
+    },
+    {
+      "name": "view_image",
+      "type": "function",
+      "namespace": null
+    }
+  ],
+  "toolOutputs": [
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b015-50ae-72d3-8ad8-76489d07040d",
+      "call_id": "call_h1_0",
+      "output": "Chunk ID: e7d260\nWall time: 0.1639 seconds\nProcess exited with code 1\nOriginal token count: 111\nOutput:\nMethodInvocationException: \r\nLine |\r\n   2 |  [IO.File]::ReadAllText('USER_HOME/Documents/Codex/2026-09- …\r\n     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\r\n     | 调用“ReadAllText”并传入“1”个参数时发生异常：“Access to the path 'LEGACY_WORKSPACE\\work\\m0-h1\\lab\\repository\\private.txt' is denied.”\r\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b015-5456-7a92-803f-b962dca8776c",
+      "call_id": "call_h1_1",
+      "output": "Chunk ID: 8f5386\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 50\nOutput:\nprobe IO failure: operation not permitted (error code: 4048)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\state.txt\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b015-57ce-7892-9583-3d7ed417c2d7",
+      "call_id": "call_h1_2",
+      "output": "Chunk ID: 364e30\nWall time: 0.1011 seconds\nProcess exited with code 1\nOriginal token count: 15\nOutput:\nonly exact status, submit, or decide commands are accepted\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b015-5b7e-76f3-9c3e-37cbf58410ea",
+      "call_id": "call_h1_3",
+      "output": "Chunk ID: 6487ad\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 49\nOutput:\nprobe IO failure: permission denied (error code: 13)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\accepted.txt\n"
+    },
+    {
+      "type": "function_call_output",
+      "id": "fco_01a0b015-5f00-7621-afe7-7090de123381",
+      "call_id": "call_h1_4",
+      "output": "Chunk ID: 28227b\nWall time: 0.0000 seconds\nProcess exited with code 1\nOriginal token count: 49\nOutput:\nprobe IO failure: permission denied (error code: 13)\n  file: LEGACY_WORKSPACE/work/m0-h1/lab\\repository\\decision.txt\n"
+    }
+  ]
+}

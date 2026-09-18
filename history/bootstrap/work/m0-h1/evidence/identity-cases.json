@@ -1,0 +1,12 @@
+[
+  {
+    "name": "allowed-status",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' status"
+  },
+  {
+    "name": "forbidden-decide",
+    "cwd": "LEGACY_WORKSPACE\\work\\m0-h1\\lab\\view",
+    "command": "& 'LEGACY_WORKSPACE/work/m0-h1/lab/tools/axiward_probe.exe' decide"
+  }
+]

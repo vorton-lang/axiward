@@ -1,0 +1,33 @@
+{
+  "status": "passed",
+  "userReplies": "simulated by trusted test client",
+  "questionContexts": [
+    {
+      "question": "normal",
+      "threadId": "01a0b05b-c596-71b1-acf0-dce2c7442cd4",
+      "turnId": "01a0b05b-c5eb-7de2-ad5f-a7a3d8680894",
+      "nativeRequestId": 2
+    },
+    {
+      "question": "stale",
+      "threadId": "01a0b05b-c596-71b1-acf0-dce2c7442cd4",
+      "turnId": "01a0b05b-c5eb-7de2-ad5f-a7a3d8680894",
+      "nativeRequestId": 4
+    },
+    {
+      "question": "disconnect",
+      "threadId": "01a0b05b-c596-71b1-acf0-dce2c7442cd4",
+      "turnId": "01a0b05b-c5eb-7de2-ad5f-a7a3d8680894",
+      "nativeRequestId": 6
+    }
+  ],
+  "targetThread": "01a0b05b-c596-71b1-acf0-dce2c7442cd4",
+  "completedThread": "01a0b05b-c596-71b1-acf0-dce2c7442cd4",
+  "checks": {
+    "worker-cannot-claim-user-source": true,
+    "decision-bound-to-artifact-and-spec": true,
+    "stale-answer-not-applied": true,
+    "native-callback-resumes-original-task": true,
+    "decision-survives-notification-failure": true
+  }
+}
