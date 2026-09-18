@@ -1,0 +1,21 @@
+name = "axiward"
+version = "0.1.0"
+defaultTargets = ["Axiward", "axiward"]
+
+[leanOptions]
+warningAsError = true
+
+[[lean_lib]]
+name = "Axiward"
+
+[[lean_exe]]
+name = "axiward"
+root = "Main"
+
+[[lean_exe]]
+name = "store_scenarios"
+root = "Tests.StoreScenarios"
+
+[[lean_exe]]
+name = "workflow_scenarios"
+root = "Tests.WorkflowScenarios"

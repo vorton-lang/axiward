@@ -1,0 +1,126 @@
+"""Unmodified Codex router + MCP elicitation. No model turns or inference.
+
+The ephemeral native context is a protocol fixture. User replies are simulated
+by this client and are not user approval of a real product.
+"""
+import argparse
+import json
+import queue
+import subprocess
+import sys
+import threading
+import tomllib
+from pathlib import Path
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--toolchain", type=Path, required=True)
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--package", type=Path)
+    args = parser.parse_args()
+    source = Path(__file__).resolve().parent.parent
+    if args.package:
+        source = args.package.resolve()
+    exe = source / "axiward.exe" if args.package else source / ".lake/build/bin/axiward.exe"
+    root = args.output.resolve()
+    root.mkdir(parents=True, exist_ok=False)
+    repo, view = root / "project.git", root / "view"
+
+    def cli(*args):
+        run = subprocess.run([str(exe), *map(str, args)], capture_output=True, text=True,
+                             encoding="utf-8", timeout=60, creationflags=subprocess.CREATE_NO_WINDOW)
+        assert run.returncode == 0, run.stdout + run.stderr
+        return json.loads(run.stdout)
+
+    cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
+    cli("session", repo, view, Path(sys.executable), source / "adapter/server.py")
+    generated = tomllib.loads((view / ".codex/config.toml").read_text(encoding="utf-8"))
+    mcp = generated["mcp_servers"]["axiward"]
+    config = "mcp_servers.axiward = { " + ", ".join(f"{key} = {json.dumps(value)}" for key, value in mcp.items()) + " }"
+    command = ["codex", "app-server", "--stdio", "-c", config,
+               "-c", "mcp_servers.node_repl.enabled=false", "-c", "mcp_servers.openaiDeveloperDocs.enabled=false",
+               "--disable", "apps", "--disable", "plugins", "--disable", "hooks", "--disable", "multi_agent"]
+    events = (root / "events.jsonl").open("w", encoding="utf-8")
+    errors = (root / "stderr.txt").open("w", encoding="utf-8")
+    native = subprocess.Popen(command, cwd=view, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=errors, text=True, encoding="utf-8", creationflags=subprocess.CREATE_NO_WINDOW)
+    messages = queue.Queue()
+
+    def read():
+        for line in native.stdout:
+            messages.put(json.loads(line))
+        messages.put(None)
+
+    threading.Thread(target=read, daemon=True).start()
+    questions = []
+
+    def send(item):
+        native.stdin.write(json.dumps(item) + "\n")
+        native.stdin.flush()
+
+    def response(number):
+        while True:
+            item = messages.get(timeout=90)
+            assert item is not None, "native server exited"
+            events.write(json.dumps(item, ensure_ascii=False) + "\n")
+            events.flush()
+            if item.get("method") == "mcpServer/elicitation/request":
+                params = item["params"]
+                assert params["serverName"] == "axiward", params
+                if (params.get("_meta") or {}).get("codex_approval_kind") == "mcp_tool_call":
+                    send({"id": item["id"], "result": {"action": "accept", "content": {}}})
+                else:
+                    questions.append({"threadId": params["threadId"], "message": params["message"]})
+                    send({"id": item["id"], "result": {"action": "accept", "content": {"choice": "list"}}})
+            elif "method" in item and "id" in item:
+                send({"id": item["id"], "error": {"code": -32601, "message": "not part of this protocol fixture"}})
+            elif item.get("id") == number:
+                assert "error" not in item, item
+                return item["result"]
+
+    def tool(number, name, **data):
+        send({"id": number, "method": "mcpServer/tool/call", "params": {
+            "threadId": thread, "server": "axiward", "tool": name, "arguments": data}})
+        result = response(number)
+        assert not result.get("isError"), result
+        return json.loads(result["content"][0]["text"])
+
+    try:
+        send({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "axiward-acceptance", "version": "0.1"},
+              "capabilities": {"experimentalApi": True}}})
+        response(1)
+        send({"method": "initialized"})
+        send({"id": 2, "method": "thread/start", "params": {"cwd": str(view),
+              "sandbox": generated["sandbox_mode"], "approvalPolicy": generated["approval_policy"], "ephemeral": True}})
+        thread = response(2)["thread"]["id"]
+        tool(3, "status")
+        package = tool(4, "next", request_id="question", node=0, action="requestDecision")
+        question = {"prompt": "Protocol fixture: select list?", "subject": "Synthetic preference for the current FIFO goal.",
+                    "options": [{"key": "list", "label": "Use a list"}]}
+        (Path(package["candidateDirectory"]) / "question.json").write_text(json.dumps(question), encoding="utf-8")
+        tool(5, "submit", request_id="question-submit", node=0, serial=0)
+        answer = tool(6, "ask_user", node=0, serial=0)
+        assert len(questions) == 1 and questions[0]["threadId"] == thread, questions
+        assert answer["decision"] == {"answered": {"serial": 0, "applicable": True}}, answer
+        status = tool(7, "status")
+        assert len(status["inbox"]) == 1
+        tool(8, "acknowledge", request_id="ack", node=0, serial=0)
+        assert tool(9, "status")["inbox"] == []
+        result = {"status": "passed", "nativeThread": thread, "modelTurns": 0,
+                  "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "notification acknowledgement"]}
+        (root / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+        print(json.dumps(result), flush=True)
+    finally:
+        native.stdin.close()
+        try:
+            native.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            native.terminate()
+            native.wait(timeout=5)
+        events.close()
+        errors.close()
+
+
+if __name__ == "__main__":
+    main()

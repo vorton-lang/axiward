@@ -1,0 +1,8 @@
+{
+  "prompt": "Which implementation approach should the next package use?",
+  "subject": "A preference for the current FIFO goal; no specification change or proof is implied.",
+  "options": [
+    { "key": "list", "label": "Use an immutable list first" },
+    { "key": "explore", "label": "Explore alternative representations" }
+  ]
+}
