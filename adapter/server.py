@@ -66,7 +66,7 @@ class Adapter:
         paths = {Path(key).resolve(): value for key, value in filesystem.items() if not key.startswith(":")}
         expected = {self.repo: "deny", Path(str(self.repo) + ".checks"): "deny", self.exe.parent: "deny",
                     Path(__file__).resolve().parent: "deny", self.view: "read", self.view / "work": "write", self.view / "tmp": "write"}
-        if paths != expected or filesystem.get(":root") != "read" or "extends" in profile:
+        if paths != expected or len(filesystem) != len(expected) + 1 or filesystem.get(":root") != "read" or "extends" in profile:
             raise ValueError("native profile does not protect this repository, controller and view")
         if any(item.get("enabled", True) for name, item in config.get("mcp_servers", {}).items() if name != "axiward"):
             raise ValueError("unreviewed privileged MCP transport in worker configuration")

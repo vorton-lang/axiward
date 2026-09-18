@@ -1,0 +1,45 @@
+{
+  "status": "passed",
+  "replies": [
+    {
+      "accepted": {
+        "serial": 0
+      }
+    },
+    {
+      "accepted": {
+        "serial": 0
+      }
+    }
+  ],
+  "buildRecords": [
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 3673,
+      "exitCode": 0,
+      "name": "01-build",
+      "stderr": "",
+      "stdout": "✔ [2/10] Built Axiward.Spec (1.0s)\n✔ [3/10] Built Axiward.Queue (1.1s)\n✔ [4/10] Built Axiward.Proofs (1.1s)\n✔ [5/10] Built Axiward.Queue:c.o (1.0s)\n✔ [6/10] Built Main (1.1s)\n✔ [7/10] Built Main:c.o (144ms)\n✔ [8/10] Built fifo_demo:exe (356ms)\n✔ [9/10] Built Gate (1.0s)\nBuild completed successfully (10 jobs).\n"
+    },
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 7372,
+      "exitCode": 0,
+      "name": "01-build",
+      "stderr": "",
+      "stdout": "✔ [2/10] Built Axiward.Spec (986ms)\n✔ [3/10] Built Axiward.Queue (1.0s)\n✔ [4/10] Built Axiward.Queue:c.o (1.0s)\n✔ [5/10] Built Axiward.Proofs (1.1s)\n✔ [6/10] Built Main (1.1s)\n✔ [7/10] Built Main:c.o (144ms)\n✔ [8/10] Built fifo_demo:exe (379ms)\n✔ [9/10] Built Gate (1.0s)\nBuild completed successfully (10 jobs).\n"
+    }
+  ],
+  "rawRecord": ".work/concurrent-isolation-1789723190814302800/result.json",
+  "rawSha256": "31fd55620147641d255dd7fd5b55cf2fba973eb601ec6ffa48e248563383d73e"
+}

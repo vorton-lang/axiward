@@ -33,14 +33,22 @@ def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
     pathRule (snapshot / ".lake") "write", pathRule (snapshot / ".tmp") "write",
     pathRule (snapshot / "lake-manifest.json") "write", pathRule (snapshot / "audit.json") "write"]
   let profile := "{ filesystem = { " ++ String.intercalate ", " rules ++ " }, network = { enabled = false } }"
-  IO.Process.output {
-    cmd := "codex"
-    args := #["sandbox", "-P", "axiward_verifier", "-C", snapshot.toString,
-      "-c", "permissions.axiward_verifier = " ++ profile,
-      "-c", "windows.sandbox = \"elevated\"", "--",
-      (toolRoot / "bin" / "lake.exe").toString] ++ arguments
-    cwd := some snapshot
-    env := environment ++ #[("TMP", some (snapshot / ".tmp").toString),
-      ("TEMP", some (snapshot / ".tmp").toString)] }
+  let profileName := "axiward_" ++ ((snapshot.parent.getD snapshot).fileName.getD "check").replace "-" "_"
+  -- Windows permission setup for simultaneous checks of this project interferes.
+  -- Coordinate this native resource only; workers and Git transitions remain
+  -- independent. OS handle lifetime releases the lock after process failure.
+  let gate ← IO.FS.Handle.mk (repo / "axiward-verifier.lock") .append
+  gate.lock
+  try
+    IO.Process.output {
+      cmd := "codex"
+      args := #["sandbox", "-P", profileName, "-C", snapshot.toString,
+        "-c", "permissions." ++ profileName ++ " = " ++ profile,
+        "-c", "windows.sandbox = \"elevated\"", "--",
+        (toolRoot / "bin" / "lake.exe").toString] ++ arguments
+      cwd := some snapshot
+      env := environment ++ #[("TMP", some (snapshot / ".tmp").toString),
+        ("TEMP", some (snapshot / ".tmp").toString)] }
+  finally gate.unlock
 
 end Axiward.Sandbox

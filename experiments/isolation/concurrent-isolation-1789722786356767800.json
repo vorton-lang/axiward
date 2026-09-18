@@ -1,0 +1,47 @@
+{
+  "status": "failed",
+  "replies": [
+    {
+      "rejected": {
+        "reason": "01-build did not pass",
+        "serial": 0
+      }
+    },
+    {
+      "rejected": {
+        "reason": "01-build did not pass",
+        "serial": 0
+      }
+    }
+  ],
+  "buildRecords": [
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 695,
+      "exitCode": 1,
+      "name": "01-build",
+      "stderr": "error: build failed\n",
+      "stdout": "✖ [2/10] Building Axiward.Spec (1ms)\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\concurrent-isolation-1789722786356767800\\project.git.checks\\run-30340004696500-829514511\\snapshot\\.lake\\build\n✖ [3/10] Building Axiward.Queue (1ms)\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\concurrent-isolation-1789722786356767800\\project.git.checks\\run-30340004696500-829514511\\snapshot\\.lake\\build\nSome required targets logged failures:\n- Axiward.Spec\n- Axiward.Queue\n"
+    },
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 3994,
+      "exitCode": 0,
+      "name": "01-build",
+      "stderr": "",
+      "stdout": "✔ [2/10] Built Axiward.Spec (1.1s)\n✔ [3/10] Built Axiward.Queue (1.1s)\n✔ [4/10] Built Axiward.Proofs (1.1s)\n✔ [5/10] Built Main (1.2s)\n✔ [6/10] Built Axiward.Queue:c.o (1.1s)\n✔ [7/10] Built Main:c.o (152ms)\n✔ [8/10] Built fifo_demo:exe (375ms)\n✔ [9/10] Built Gate (1.1s)\nBuild completed successfully (10 jobs).\n"
+    }
+  ],
+  "rawRecord": ".work/concurrent-isolation-1789722786356767800/result.json",
+  "rawSha256": "d9e6445881d5d34dc5e0709dba891ad262440c7d694667c5558ff3295f55381e"
+}

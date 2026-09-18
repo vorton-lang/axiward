@@ -1,0 +1,36 @@
+{
+  "status": "failed",
+  "scope": "same-request concurrent checks",
+  "buildRecords": [
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 699,
+      "exitCode": 1,
+      "name": "01-build",
+      "stderr": "error: build failed\n",
+      "stdout": "✖ [2/10] Building Axiward.Spec\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\regression-isolation-01\\accepted.git.checks\\run-29818441122600-362942703\\snapshot\\.lake\\build\n✖ [3/10] Building Axiward.Queue\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\regression-isolation-01\\accepted.git.checks\\run-29818441122600-362942703\\snapshot\\.lake\\build\nSome required targets logged failures:\n- Axiward.Spec\n- Axiward.Queue\n"
+    },
+    {
+      "arguments": [
+        "--no-cache",
+        "build",
+        "Gate",
+        "fifo_demo"
+      ],
+      "elapsedMs": 717,
+      "exitCode": 1,
+      "name": "01-build",
+      "stderr": "error: build failed\n",
+      "stdout": "✖ [2/10] Building Axiward.Spec\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\regression-isolation-01\\accepted.git.checks\\run-29818441304500-846368312\\snapshot\\.lake\\build\n✖ [3/10] Building Axiward.Queue\nerror: permission denied (error code: 13)\n  file: AXIWARD\\.work\\regression-isolation-01\\accepted.git.checks\\run-29818441304500-846368312\\snapshot\\.lake\\build\nSome required targets logged failures:\n- Axiward.Spec\n- Axiward.Queue\n"
+    }
+  ],
+  "finding": "parallel native permission setup denied writes to one or both legitimate build directories",
+  "resolutionUnderValidation": "coordinate native verifier execution with a per-project OS file lock, without serializing workers or other projects",
+  "rawRecord": ".work/regression-isolation-01/isolation-record.json",
+  "rawSha256": "c4012c049b46156e38021aabca8ba765970b81c58f479a280d09c5f2746e6be4"
+}
