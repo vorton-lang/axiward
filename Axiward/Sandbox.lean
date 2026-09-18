@@ -19,6 +19,38 @@ def scratch (repo : FilePath) : IO FilePath := do
   IO.FS.createDir path
   return path
 
+private def powershellLiteral (value : String) : String :=
+  "'" ++ value.replace "'" "''" ++ "'"
+
+/-- Codex shares SID registration across projects in one user environment.
+    Hold this gate until its restricted child has started, not until work ends. -/
+private def nativeOutput (args : IO.Process.SpawnArgs) : IO IO.Process.Output := do
+  let codexHome ← match ← IO.getEnv "CODEX_HOME" with
+    | some value => pure (FilePath.mk value)
+    | none => do
+      let some profile ← IO.getEnv "USERPROFILE"
+        | throw (IO.userError "cannot locate the Codex sandbox environment")
+      pure (FilePath.mk profile / ".codex")
+  unless codexHome.isAbsolute do throw (IO.userError "Codex home must be absolute")
+  IO.FS.createDirAll codexHome
+  let gate ← IO.FS.Handle.mk (codexHome / "axiward-sandbox-start.lock") .append
+  gate.lock
+  let (child, stderr) ← try
+      let child ← IO.Process.spawn { args with stdin := .null, stdout := .piped, stderr := .piped }
+      let stderr ← IO.asTask child.stderr.readToEnd Task.Priority.dedicated
+      let first ← child.stdout.getLine
+      unless first.trimAscii.toString == "AXIWARD_SANDBOX_STARTED" do
+        let rest ← child.stdout.readToEnd
+        let code ← child.wait
+        let error ← IO.ofExcept stderr.get
+        throw (IO.userError s!"native sandbox did not signal readiness (exit {code}): {first}{rest}{error}")
+      pure (child, stderr)
+    finally gate.unlock
+  let stdout ← child.stdout.readToEnd
+  let exitCode ← child.wait
+  let stderr ← IO.ofExcept stderr.get
+  return { exitCode, stdout, stderr }
+
 /-- Candidate code runs with read-only inputs, writable build outputs, and no
     access to the canonical store outside this one materialized snapshot. -/
 def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
@@ -34,18 +66,25 @@ def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
     pathRule (snapshot / "lake-manifest.json") "write", pathRule (snapshot / "audit.json") "write"]
   let profile := "{ filesystem = { " ++ String.intercalate ", " rules ++ " }, network = { enabled = false } }"
   let profileName := "axiward_" ++ ((snapshot.parent.getD snapshot).fileName.getD "check").replace "-" "_"
-  -- Windows permission setup for simultaneous checks of this project interferes.
-  -- Coordinate this native resource only; workers and Git transitions remain
-  -- independent. OS handle lifetime releases the lock after process failure.
+  let some systemRoot ← IO.getEnv "SystemRoot"
+    | throw (IO.userError "cannot locate Windows PowerShell")
+  let powershell := FilePath.mk systemRoot / "System32" / "WindowsPowerShell" / "v1.0" / "powershell.exe"
+  let command := "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)\n" ++
+    "[Console]::Out.WriteLine('AXIWARD_SANDBOX_STARTED')\n[Console]::Out.Flush()\n" ++
+    "try {\n& " ++ powershellLiteral (toolRoot / "bin" / "lake.exe").toString ++ " " ++
+    String.intercalate " " (arguments.toList.map powershellLiteral) ++
+    "\nexit $LASTEXITCODE\n} catch {\n[Console]::Error.WriteLine($_.Exception.Message)\nexit 1\n}\n"
+  -- Preserve per-project verifier coordination; the shared gate above only
+  -- serializes startup, so distinct projects can execute their checks together.
   let gate ← IO.FS.Handle.mk (repo / "axiward-verifier.lock") .append
   gate.lock
   try
-    IO.Process.output {
+    nativeOutput {
       cmd := "codex"
       args := #["sandbox", "-P", profileName, "-C", snapshot.toString,
         "-c", "permissions." ++ profileName ++ " = " ++ profile,
         "-c", "windows.sandbox = \"elevated\"", "--",
-        (toolRoot / "bin" / "lake.exe").toString] ++ arguments
+        powershell.toString, "-NoLogo", "-NoProfile", "-NonInteractive", "-Command", command]
       cwd := some snapshot
       env := environment ++ #[("TMP", some (snapshot / ".tmp").toString),
         ("TEMP", some (snapshot / ".tmp").toString)] }
