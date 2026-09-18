@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "status": "engineering-delivery-complete",
+  "sourceCommit": "19c47e51b928e69533e21b2a19aebfaac73d358d",
+  "cliSha256": "76c26b69a38647d4674bfb510a9c1598d484fecd5efa496ee8304b62d4e4d017",
+  "archiveSha256": "a9d846f762fefec9d3c3c7874d3957ca8809d2897bdc8e98079f0c218634d017",
+  "verifiedFiles": 39,
+  "localBundle": "dist/axiward-0.2.0.zip",
+  "regression": "experiments/isolation/regression-results.json",
+  "native": "experiments/isolation/release-native.json",
+  "verifierIsolation": "experiments/isolation/verifier-results.json",
+  "workflow": "experiments/isolation/workflow-results.json",
+  "configurationGuard": "experiments/isolation/configuration-guard.json",
+  "kernelAudit": {
+    "declarations": 2115,
+    "status": "passed",
+    "replay": "lake env leanchecker Axiward"
+  },
+  "scope": [
+    "Windows native Codex",
+    "generated task permissions plus thin MCP adapter",
+    "fixed Lean FIFO verifier"
+  ],
+  "remaining": [
+    "live agent sustained-task evaluation",
+    "requirements-to-specification skill integration",
+    "additional project/verifier contracts",
+    "navigation quality evaluation"
+  ],
+  "parallelism": "only native verification within one managed project is serialized; workers and separate projects remain independent"
+}

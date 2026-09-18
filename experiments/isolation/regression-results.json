@@ -1,0 +1,57 @@
+{
+  "status": "passed",
+  "result": {
+    "passed": [
+      "unsupported root policy is refused without silently substituting the FIFO goal",
+      "initialization protection and request replay",
+      "sealed input survives process restart and local edits; concurrent check commits once",
+      "published binary runs from the committed delivery",
+      "wrong-fifo: rejected, package released, raw evidence retained in Git",
+      "sorry: rejected, package released, raw evidence retained in Git",
+      "missing-proof: rejected, package released, raw evidence retained in Git",
+      "concurrent acquisition has exactly one owner",
+      "storage fault injection and journal validation",
+      "nested refinement, independent concurrent tasks, automatic upward proofs, runnable combined delivery",
+      "requirement revision previews exact impact, preserves unaffected nodes, and rejects obsolete evidence",
+      "one execution task repairs the changed behavior; retained proof sources are checked against the new implementation",
+      "historically admitted delivery is reused under an identical restored goal without rebuilding it",
+      "cyclic node reuse and unadmitted historical receipts are rejected",
+      "refinement missing a root requirement is rejected before creating children",
+      "different implementations cannot be combined; replacing a route preserves existing child results",
+      "delivery tampering prevents state recovery"
+    ],
+    "deliveryCommit": "84435c4978d856016e7b0adad701e660cedf35c2ff24f85296913fefa1fbf7a6",
+    "exportedDelivery": "AXIWARD\\.work\\regression-isolation-02\\delivered",
+    "retainedArtifacts": "AXIWARD\\.work\\regression-isolation-02",
+    "combinedCommit": "692daef1b94c31c5dc204c23bbcfe72212cc2dc9fce30f444f55273a5256d779",
+    "combinedDelivery": "AXIWARD\\.work\\regression-isolation-02\\combined-delivery",
+    "changedCommit": "18054e60c1c448149d4b72cc843cd0eb3a99e6832dc59b538a45c64eddee0e14",
+    "changedDelivery": "AXIWARD\\.work\\regression-isolation-02\\changed-delivery",
+    "revisionImpact": {
+      "afterRevision": 1,
+      "beforeRevision": 0,
+      "changedRequirements": [
+        "fifo/2"
+      ],
+      "invalidatedResults": [
+        0,
+        1,
+        4
+      ],
+      "obsoleteGoals": [
+        1,
+        4
+      ],
+      "retainedResults": [
+        2,
+        3
+      ],
+      "stalePackages": []
+    },
+    "restoredCommit": "850249ca70d59bdf6969b408477581dde5630f4cf830add6a76ddb5489535cb6"
+  },
+  "controllerSha256": "76c26b69a38647d4674bfb510a9c1598d484fecd5efa496ee8304b62d4e4d017",
+  "commandsSha256": "6969eef38ebfe908ce1c194905401ad5972f2b7dbbe4643733765ce0a5a65b38",
+  "rawRecord": ".work/regression-isolation-02/repository-record.json",
+  "rawSha256": "e8a38e27c7e5cd93cddf43d703b9e4f8b973ee349c0d0b6058e3b94e640421f0"
+}
