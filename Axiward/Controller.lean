@@ -29,6 +29,32 @@ def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Opti
     | _ => throw (IO.userError "request ID conflict")
   return none
 
+/-- Persist a completed check, retaining its evidence even if the package ended
+    while the external verifier was running. -/
+def recordCheck (repo : FilePath) (id : String) (node serial : Nat)
+    (candidate : Candidate) (command : Axiward.Command) : IO Reply := do
+  try Git.transact repo ⟨id, .controller, command, node⟩
+  catch error =>
+    match ← recordedCheck repo id node serial with
+    | some reply => return reply
+    | none =>
+      let current ← Git.load repo
+      if current.state.nodes[node]?.any (fun n => n.domain.active.any (fun p => p.serial == serial)) then
+        throw error
+      let raw ← Git.hashText repo (toJson command).compress
+      let mut trees : Array (String × String) := #[]
+      let mut blobs : Array Git.Blob := #[⟨"late-result.json", raw⟩]
+      match command with
+      | .finish _ verdict evidence =>
+        trees := trees.push ("check", evidence)
+        if let .passed output := verdict then
+          trees := trees.push ("product", output.product)
+          blobs := blobs.push ⟨"receipt.json", output.receipt⟩
+      | .finishRefinement _ _ evidence => trees := trees.push ("check", evidence)
+      | _ => pure ()
+      let evidence ← Git.tree repo none blobs trees
+      Git.transact repo ⟨id, .controller, .archive serial candidate evidence, node⟩
+
 def check (repo : FilePath) (id : String) (node serial : Nat) : IO Reply := do
   if let some reply ← recordedCheck repo id node serial then return reply
   let loaded ← Git.load repo
@@ -54,27 +80,7 @@ def check (repo : FilePath) (id : String) (node serial : Nat) : IO Reply := do
         pure (Command.finishRefinement serial result.verdict result.evidence)
     | .explore | .requestDecision => do
       pure (.workflow (← FlowIO.check repo target.domain.scope package candidate (!stale)))
-  try Git.transact repo ⟨id, .controller, command, node⟩
-  catch error =>
-    match ← recordedCheck repo id node serial with
-    | some reply => return reply
-    | none =>
-      let current ← Git.load repo
-      if current.state.nodes[node]?.any (fun n => n.domain.active.any (fun p => p.serial == serial)) then
-        throw error
-      let raw ← Git.hashText repo (toJson command).compress
-      let mut trees : Array (String × String) := #[]
-      let mut blobs : Array Git.Blob := #[⟨"late-result.json", raw⟩]
-      match command with
-      | .finish _ verdict evidence =>
-        trees := trees.push ("check", evidence)
-        if let .passed output := verdict then
-          trees := trees.push ("product", output.product)
-          blobs := blobs.push ⟨"receipt.json", output.receipt⟩
-      | .finishRefinement _ _ evidence => trees := trees.push ("check", evidence)
-      | _ => pure ()
-      let evidence ← Git.tree repo none blobs trees
-      Git.transact repo ⟨id, .controller, .archive serial candidate evidence, node⟩
+  recordCheck repo id node serial candidate command
 
 def compositionIdentity (repo : FilePath) (scope : Scope) (route : Route)
     (children : List ChildResult) : IO String :=

@@ -19,3 +19,11 @@ root = "Tests.StoreScenarios"
 [[lean_exe]]
 name = "workflow_scenarios"
 root = "Tests.WorkflowScenarios"
+
+[[lean_exe]]
+name = "verifier_boundary"
+root = "Tests.VerifierBoundary"
+
+[[lean_exe]]
+name = "workflow_boundary"
+root = "Tests.WorkflowBoundary"

@@ -33,8 +33,18 @@ structure Toolchain where
 def digestFile (repo file : FilePath) : IO String :=
   Git.checked repo #["hash-object", "--no-filters", "--", file.toString]
 
-def toolBindings (repo root : FilePath) : IO (Array FileBinding) :=
-  toolFiles.mapM fun (path : String) => return ⟨path, ← digestFile repo (root / path)⟩
+private def fileIds (repo : FilePath) (files : Array FilePath) (store : Bool := false) : IO (Array String) := do
+  if files.isEmpty then return #[]
+  let args := #["hash-object", "--no-filters", "--stdin-paths"] ++ (if store then #["-w"] else #[])
+  let input := String.intercalate "\n" (files.toList.map fun p => p.toString.replace "\\" "/") ++ "\n"
+  let ids := (← Git.checked repo args (some input)).splitOn "\n" |>.toArray
+  unless ids.size == files.size && ids.all Git.objectId do
+    throw (IO.userError "Git returned an incomplete file digest response")
+  return ids
+
+def toolBindings (repo root : FilePath) : IO (Array FileBinding) := do
+  let ids ← fileIds repo (toolFiles.map fun (path : String) => root / path)
+  return (toolFiles.zip ids).map fun (path, oid) => ⟨path, oid⟩
 
 def importPolicyWithConfig (repo directory : FilePath) (config : String) : IO Scope := do
   let overflow ← FifoPolicy.validateRoot directory
@@ -116,15 +126,17 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     evidence := evidence.push ⟨s!"{name}.json", log⟩
     if output.exitCode != 0 then
       return ← retain evidence (.rejected s!"{name} did not pass")
-  for name in policyFiles ++ #["claims.json", "controller-toolchain.json", "overflow.json"] do
-    unless (← digestFile repo (snapshot / name)) ==
-        (← Git.resolve repo s!"{scope.policy}:{name}") do
-      return ← retain evidence (.rejected "policy changed during verification")
   let candidatePaths := (← Git.checked repo #["ls-tree", "-r", "--name-only", candidate.tree]).splitOn "\n"
-  for path in candidatePaths do
-    unless (← digestFile repo (snapshot / path)) ==
-        (← Git.resolve repo s!"{candidate.tree}:{path}") do
-      return ← retain evidence (.rejected "candidate changed during verification")
+  let policyPaths := policyFiles ++ #["claims.json", "controller-toolchain.json", "overflow.json"]
+  let bindings := (policyPaths.map fun path => (scope.policy, path, "policy")) ++
+    (candidatePaths.toArray.map fun path => (candidate.tree, path, "candidate"))
+  let actual ← fileIds repo (bindings.map fun (_, path, _) => snapshot / path)
+  let requested := String.intercalate "\n" (bindings.toList.map fun (tree, path, _) => s!"{tree}:{path}") ++ "\n"
+  let expected := (← Git.checked repo #["cat-file", "--batch-check=%(objectname)"] (some requested)).splitOn "\n" |>.toArray
+  unless expected.size == bindings.size && expected.all Git.objectId do
+    throw (IO.userError "Git returned an incomplete sealed-input response")
+  for ((got, wanted), (_, _, kind)) in (actual.zip expected).zip bindings do
+    unless got == wanted do return ← retain evidence (.rejected s!"{kind} changed during verification")
   unless (← toolBindings repo toolRoot) == toolchain.files &&
       (← digestFile repo (← IO.appPath)) == controller do
     return ← retain evidence (.unknown "controller or verifier tools changed")
@@ -136,8 +148,8 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     ".lake/build/lib/lean/Axiward/Proofs.olean", ".lake/build/lib/lean/Gate.olean",
     ".lake/build/ir/Axiward/Queue.c", ".lake/build/ir/Main.c",
     ".lake/build/bin/fifo_demo.exe"] ++ partSources.toArray ++ partObjects.toArray
-  let productBlobs ← productFiles.mapM fun (path : String) =>
-    return (⟨path, ← Git.hashFile repo (snapshot / path)⟩ : Git.Blob)
+  let productIds ← fileIds repo (productFiles.map fun (path : String) => snapshot / path) true
+  let productBlobs := (productFiles.zip productIds).map fun (path, oid) => (⟨path, oid⟩ : Git.Blob)
   let product ← Git.tree repo none productBlobs
   let receipt : Receipt := ⟨1, scope, candidate, product, toolchain.files, controller⟩
   let receiptBlob ← Git.hashText repo (toJson receipt).compress

@@ -173,4 +173,38 @@ theorem launch_requires_admitted_plan (s : Domain) (serial : Nat) (id : String) 
       simp only [workflowStep, hp, plan, Bind.bind, Except.bind] at h
       split at h <;> contradiction
 
+/-- Every successful launch consumes exactly one slot from its admitted budget. -/
+theorem launch_within_budget (s : Domain) (serial : Nat) (id : String) (candidate : Candidate)
+    (usable : Bool) (w : WorkflowState) (ended : Bool) (reply : Reply)
+    (h : workflowStep s .controller (.launch serial id candidate) usable = .ok (w, ended, reply)) :
+    ∃ plan, s.workflow.explorations.find? (fun x => x.serial == serial) = some plan ∧
+      (w.operations.filter (fun x => x.serial == serial)).length =
+        (s.workflow.operations.filter (fun x => x.serial == serial)).length + 1 ∧
+      (w.operations.filter (fun x => x.serial == serial)).length ≤ plan.plan.maxRuns := by
+  cases hp : sealedFor s serial .explore with
+  | error e => simp [workflowStep, hp, Bind.bind, Except.bind] at h
+  | ok pair =>
+    rcases pair with ⟨p, input⟩
+    simp only [workflowStep, hp, Bind.bind, Except.bind] at h
+    repeat first | split at h | contradiction
+    all_goals simp_all [pure, Except.pure, throw]
+    rcases h with ⟨rfl, rfl, rfl⟩
+    simp_all
+    omega
+
+/-- An applicable answer is tied to an active package, usable current scope and
+    one of the admitted choices; free text and stale answers cannot acquire it. -/
+theorem applicable_answer_binding (s : Domain) (serial : Nat) (choice comment : String)
+    (usable : Bool) (w : WorkflowState) (ended : Bool)
+    (h : workflowStep s .user (.answer serial choice comment) usable =
+      .ok (w, ended, .answered serial true)) :
+    ∃ question, s.workflow.decisions.find? (fun x => x.serial == serial) = some question ∧
+      s.active.any (fun p => p.serial == serial) = true ∧ usable = true ∧
+      (question.input == s.scope) = true ∧
+      question.question.options.any (fun x => x.key == choice) = true := by
+  simp only [workflowStep] at h
+  repeat first | split at h | contradiction
+  all_goals simp_all [pure, Except.pure, throw, and_assoc]
+  exact h.2.1.symm.trans h.2.2.1
+
 end Axiward

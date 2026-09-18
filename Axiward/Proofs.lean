@@ -167,4 +167,18 @@ theorem changed_scope_rejects (s : Domain) (p : Package) (candidate : Candidate)
       .rejected p.serial "scope changed; revalidation required") := by
   simp [finish, ha, hp, changed]
 
+theorem stale_revision_rejected (s : Domain) (expected replacement : Scope)
+    (stale : s.scope ≠ expected) : revise s expected replacement = .error .staleRevision := by
+  simp [revise, stale]
+
+theorem revision_preserves_package (s t : Domain) (expected replacement : Scope) (reply : Reply)
+    (h : revise s expected replacement = .ok (t, reply)) :
+    t.active = s.active ∧ t.nextSerial = s.nextSerial := by
+  unfold revise at h
+  repeat first | split at h | contradiction
+  all_goals
+    simp only [Except.ok.injEq, Prod.mk.injEq] at h
+    rcases h with ⟨rfl, rfl⟩
+    exact ⟨rfl, rfl⟩
+
 end Axiward

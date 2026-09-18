@@ -305,6 +305,21 @@ theorem step_preserves_history (s : State) (request : Request) (change : Change 
     (_h : step s request = .ok change) :
     ∃ suffix, change.after.journal.entries = s.journal.entries ++ suffix := change.historyPrefix
 
+/-- A successful replay returns the recorded reply without changing state or
+    creating another event, including when the original package has ended. -/
+theorem replay_preserves_state (s : State) (request : Request) (entry : Entry) (change : Change s)
+    (nonempty : request.id.isEmpty = false) (same : entry.request = request)
+    (found : s.journal.entries.find? (fun e => e.request.id == request.id) = some entry)
+    (h : step s request = .ok change) :
+    change.after = s ∧ change.reply = entry.reply ∧ change.changed = false := by
+  cases hc : request.command <;>
+    simp only [step, nonempty, found, same, hc, ite_true,
+      pure, Except.pure, Bind.bind, Except.bind] at h
+  all_goals
+    repeat first | split at h | contradiction
+    all_goals simp_all
+    all_goals cases h <;> exact ⟨rfl, rfl, rfl⟩
+
 theorem graph_node_integrity (s : State) (i : Fin s.nodes.size) : Integrity s.nodes[i].domain :=
   (domainCheck_iff _).mp (s.integrity.2 i).1
 

@@ -9,52 +9,12 @@ def expectFailure (operation : IO α) (message : String) : IO Unit := do
   let failed ← try let _ ← operation; pure false catch _ => pure true
   require failed message
 
-/-- Protocol fixtures simulate checked outputs; actual Lean proofs are exercised
-    by integration.py. These cases cover revision while packages are in flight. -/
-def protocolCases : IO Unit := do
-  let a : Requirement := ⟨"a", "one"⟩
-  let b : Requirement := ⟨"b", "one"⟩
-  let root : Scope := ⟨0, "root", "root-policy", [a, b]⟩
-  let scopeA : Scope := ⟨0, "a", "a-policy", [a]⟩
-  let scopeB : Scope := ⟨0, "b", "b-policy", [b]⟩
-  let mut state ← Git.decode (restore { initial := root })
-  let advance (s : State) (r : Request) : IO State := do
-    return (← Git.decode ((step s r).mapError (fun e => s!"{repr e}"))).after
-  state ← advance state ⟨"plan-begin", .controller, .begin "planner" .refine, 0⟩
-  state ← advance state ⟨"plan-submit", .worker "planner", .submit 0 ⟨"plan"⟩, 0⟩
-  state ← advance state ⟨"plan-check", .controller, .finishRefinement 0
-    (.passed ⟨root, ⟨"plan"⟩, [.fresh scopeA, .fresh scopeB], "fixture-certificate", none⟩) "fixture", 0⟩
-  state ← advance state ⟨"a-begin", .controller, .begin "worker-a" .execute, 1⟩
-  state ← advance state ⟨"b-begin", .controller, .begin "worker-b" .execute, 2⟩
-  state ← advance state ⟨"a-submit", .worker "worker-a", .submit 0 ⟨"candidate-a"⟩, 1⟩
-  state ← advance state ⟨"b-submit", .worker "worker-b", .submit 0 ⟨"candidate-b"⟩, 2⟩
-  let frames := packageFrames state.nodes
-  let replacement : Scope := ⟨0, "root-two", "policy-two", [⟨"a", "two"⟩, b]⟩
-  state ← advance state ⟨"change-root", .user, .revise root replacement, 0⟩
-  require (packageFrames state.nodes == frames) "revision changed outstanding packages"
-  require ((step state ⟨"stale-root-change", .user, .revise root replacement, 0⟩).toOption.isNone)
-    "stale root confirmation overwrote a later revision"
-  state ← advance state ⟨"a-result", .controller, .finish 0
-    (.passed ⟨scopeA, ⟨"candidate-a"⟩, "a-product", "a-receipt"⟩) "fixture", 1⟩
-  state ← advance state ⟨"b-result", .controller, .finish 0
-    (.passed ⟨scopeB, ⟨"candidate-b"⟩, "b-product", "b-receipt"⟩) "fixture", 2⟩
-  let some nodeA := state.nodes[1]? | throw (IO.userError "missing node A")
-  let some nodeB := state.nodes[2]? | throw (IO.userError "missing node B")
-  require (nodeA.domain.published.isNone && nodeA.domain.active.isNone) "stale result was published"
-  require nodeB.domain.published.isSome "unaffected outstanding package could not finish"
-  state ← advance state ⟨"reuse-begin", .controller, .begin "planner" .refine, 0⟩
-  state ← advance state ⟨"reuse-submit", .worker "planner", .submit 1 ⟨"reuse"⟩, 0⟩
-  let fake : Publication := ⟨state.domain.scope, ⟨"fake"⟩, "fake-product", "fake-receipt"⟩
-  require ((step state ⟨"forged-admission", .controller, .finishRefinement 1
-    (.reused ⟨state.domain.scope, ⟨"reuse"⟩, 99, fake, "new-receipt"⟩) "fixture", 0⟩).toOption.isNone)
-    "unadmitted historical evidence passed the kernel guard"
-
 def main (args : List String) : IO UInt32 := do
   try
-    protocolCases
     let [path] := args | throw (IO.userError "store_scenarios <new-absolute-project-directory>")
     let repo : FilePath := path
     Git.initRepository repo
+    expectFailure (Git.initRepository repo) "initialization overwrote an existing checkout"
     let spec ← Git.hashText repo "-- storage fixture, not a proof certificate\n"
     let policy ← Git.tree repo none #[⟨"Axiward/Spec.lean", spec⟩]
     Git.create repo ⟨0, spec, policy, []⟩
@@ -94,15 +54,38 @@ def main (args : List String) : IO UInt32 := do
     let rejected ← Git.load repo
     require (rejected.state.domain.active.isNone && rejected.state.domain.published.isNone)
       "stale verification retained occupancy or published a result"
-    let journal := rejected.state.journal
+    -- A protocol publication isolates storage binding from Lean proof checking.
+    let product ← Git.tree repo none #[⟨"result.txt", spec⟩]
+    let receipt ← Git.hashText repo "synthetic receipt for storage binding"
+    let _ ← Git.transact repo ⟨"publish-begin", .controller, .begin "worker-a" .execute, 0⟩
+    let _ ← Git.transact repo ⟨"publish-submit", .worker "worker-a", .submit 1 ⟨candidate⟩, 0⟩
+    let _ ← Git.transact repo ⟨"publish", .controller, .finish 1
+      (.passed ⟨rejected.state.domain.scope, ⟨candidate⟩, product, receipt⟩) policy, 0⟩
+    let published ← Git.load repo
+    let changed ← Git.hashText repo "changed after publication"
+    let changedTree ← Git.tree repo (some published.head) #[⟨"product/result.txt", changed⟩]
+    let changedCommit ← Git.commitTree repo changedTree (some published.head) "artifact corruption fixture\n"
+    require (← Git.compareAndSwap repo (some published.head) changedCommit) "artifact corruption fixture failed"
+    expectFailure (Git.load repo) "changed published bytes passed the receipt binding"
+    require (← Git.compareAndSwap repo (some changedCommit) published.head) "fixture restore failed"
+    let missing ← Git.tree repo none #[]
+      #[(".axiward/policy", policy), ("product", product)]
+    expectFailure (Git.verifyBindings repo missing published.state.nodes) "missing receipt passed batch bindings"
+    let wrongKind ← Git.tree repo none #[]
+      #[(".axiward/policy", policy), ("product", product), (".axiward/receipt.json", product)]
+    let wrongNodes := published.state.nodes.map fun node =>
+      { node with domain := { node.domain with published := node.domain.published.map fun p =>
+        { p with receipt := product } } }
+    expectFailure (Git.verifyBindings repo wrongKind wrongNodes) "tree object was accepted as a receipt blob"
+    let journal := published.state.journal
     let badEntries := journal.entries.map fun e =>
       if e.request.id == "submit" then { e with reply := .accepted 0 } else e
     let badBlob ← Git.hashText repo (toJson { journal with entries := badEntries }).compress
-    let badTree ← Git.tree repo (some rejected.head) #[⟨".axiward/state.json", badBlob⟩]
-    let badCommit ← Git.commitTree repo badTree (some rejected.head) "injected journal corruption\n"
-    require (← Git.compareAndSwap repo (some rejected.head) badCommit) "corruption fixture failed"
+    let badTree ← Git.tree repo (some published.head) #[⟨".axiward/state.json", badBlob⟩]
+    let badCommit ← Git.commitTree repo badTree (some published.head) "injected journal corruption\n"
+    require (← Git.compareAndSwap repo (some published.head) badCommit) "corruption fixture failed"
     expectFailure (Git.load repo) "corrupt journal was loaded"
-    IO.println "PASS: stale CAS, source preservation, replay, request conflict, owner check, sealed recovery, stale scope, corrupt journal"
+    IO.println "PASS: stale CAS, source preservation, replay, sealed recovery, product binding and corrupt journal"
     return 0
   catch error =>
     IO.eprintln error.toString

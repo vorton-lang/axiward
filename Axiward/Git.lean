@@ -109,8 +109,9 @@ def tree (repo : FilePath) (base : Option String) (blobs : Array Blob)
     let _ ← checked repo #["read-tree", "-i", s!"--prefix={treePrefix}/", oid] none (some index)
   for blob in blobs do
     unless safePath blob.path && objectId blob.oid do throw (IO.userError "invalid blob binding")
-    let _ ← checked repo #["update-index", "--add", "--cacheinfo", "100644", blob.oid,
-      blob.path] none (some index)
+  unless blobs.isEmpty do
+    let entries := String.join (blobs.toList.map fun blob => s!"100644 {blob.oid}\t{blob.path}\x00")
+    let _ ← checked repo #["update-index", "-z", "--index-info"] (some entries) (some index)
   checked repo #["write-tree"] none (some index)
 
 def resolve (repo : FilePath) (revision : String) : IO String :=
@@ -196,33 +197,45 @@ def nodePath (id : Nat) : String := if id == 0 then ".axiward" else s!".axiward/
 def productPath (id : Nat) : String := if id == 0 then "product" else s!"{nodePath id}/product"
 
 def verifyBindings (repo : FilePath) (head : String) (nodes : Array Node) : IO Unit := do
+  -- One Git process resolves every binding against this immutable head. The
+  -- expected object kind is checked too; a missing path never counts as a match.
+  let mut bindings : Array (String × String × String × String) := #[]
   for (node, i) in nodes.toList.zipIdx do
     let s := node.domain
     let path := nodePath i
-    unless (← resolve repo s!"{head}:{path}/policy") == s.scope.policy do
-      throw (IO.userError s!"node {i}: policy tree differs from journal scope")
-    unless (← resolve repo s!"{head}:{path}/policy/Axiward/Spec.lean") == s.scope.specification do
-      throw (IO.userError s!"node {i}: specification differs from journal scope")
+    bindings := bindings.push (s!"{path}/policy", "tree", s.scope.policy,
+      s!"node {i}: policy tree differs from journal scope")
+    bindings := bindings.push (s!"{path}/policy/Axiward/Spec.lean", "blob", s.scope.specification,
+      s!"node {i}: specification differs from journal scope")
     if let some package := s.active then
       if let .checking candidate := package.phase then
-        unless (← resolve repo s!"{head}:{path}/candidate") == candidate.tree do
-          throw (IO.userError s!"node {i}: sealed candidate differs from journal")
+        bindings := bindings.push (s!"{path}/candidate", "tree", candidate.tree,
+          s!"node {i}: sealed candidate differs from journal")
     if let some publication := s.published then
-      unless (← resolve repo s!"{head}:{productPath i}") == publication.product &&
-          (← resolve repo s!"{head}:{path}/receipt.json") == publication.receipt do
-        throw (IO.userError s!"node {i}: published product or receipt differs from journal")
+      bindings := bindings.push (productPath i, "tree", publication.product,
+        s!"node {i}: published product or receipt differs from journal")
+      bindings := bindings.push (s!"{path}/receipt.json", "blob", publication.receipt,
+        s!"node {i}: published product or receipt differs from journal")
     if let some route := node.route then
-      unless (← resolve repo s!"{head}:{path}/route") == route.certificate do
-        throw (IO.userError s!"node {i}: refinement certificate differs from journal")
+      bindings := bindings.push (s!"{path}/route", "tree", route.certificate,
+        s!"node {i}: refinement certificate differs from journal")
     for (op, j) in s.workflow.operations.zipIdx do
-      unless (← resolve repo s!"{head}:{path}/operations/{j}/input") == op.candidate.tree do
-        throw (IO.userError "operation input differs from journal")
+      bindings := bindings.push (s!"{path}/operations/{j}/input", "tree", op.candidate.tree,
+        "operation input differs from journal")
       if op.result.isSome then
-        unless (← resolve repo s!"{head}:{path}/operations/{j}/evidence") == op.evidence do
-          throw (IO.userError "observation differs from journal")
+        bindings := bindings.push (s!"{path}/operations/{j}/evidence", "tree", op.evidence,
+          "observation differs from journal")
     for (serial, report) in s.workflow.reports do
-      unless (← resolve repo s!"{head}:{path}/reports/{serial}.md") == report do
-        throw (IO.userError "exploration report differs from journal")
+      bindings := bindings.push (s!"{path}/reports/{serial}.md", "blob", report,
+        "exploration report differs from journal")
+  let input := String.intercalate "\n" (bindings.toList.map (fun b => s!"{head}:{b.1}")) ++ "\n"
+  let output ← checked repo #["cat-file", "--batch-check=%(objectname) %(objecttype)"] (some input)
+  let actual := output.splitOn "\n"
+  unless actual.length == bindings.size do
+    throw (IO.userError "Git returned an incomplete object binding response")
+  for (value, (_, kind, oid, message)) in actual.zip bindings.toList do
+    unless value.trimAscii.toString == s!"{oid} {kind}" do throw (IO.userError message)
+
 def load (repo : FilePath) : IO Loaded := do
   checkRepository repo
   let head ← resolve repo "refs/heads/main"
