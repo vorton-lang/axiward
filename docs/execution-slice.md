@@ -104,7 +104,7 @@ flowchart TD
 
 恢复同时检查规格、候选、精化凭据和交付物的实际对象摘要。裸仓库中的 `axiward-work/` 保留构建目录和诊断材料，不参与正式状态判断。
 
-本轮使用持久化协议 schema 3。schema 1、2 的旧实验仍保留，当前程序会明确拒绝加载，不自动改写旧记录。
+当前持久化协议为 schema 3；程序明确拒绝加载 schema 1、2，不自动改写旧记录。
 
 ## CLI
 
@@ -122,7 +122,7 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 动作参数支持 `execute`、`refine`、`explore`、`requestDecision`。根编号为 `0`，各节点的工作包独立从 `0` 开始。完整用户命令见 `--help`，worker 工具与文件格式见产品说明。
 
-基线策略和候选在 `examples/fifo/policy`、`candidate`；变更验收版本在 `policy-overwrite`、`candidate-overwrite`。精化候选在 `examples/fifo/refinement`，`parts` 提供分组证明。
+基线策略和候选在 `examples/fifo/policy`、`candidate`；变更验收版本在 `policy-overwrite`、`candidate-overwrite`。精化候选在 `examples/fifo/refinement`；集成检查从完整候选中提取所需的分组证明。
 
 身份由受信调用方填写；CLI 是控制端接口，身份字符串本身不提供认证。薄 MCP 适配器在启动时绑定 worker 身份、仓库和视图；工具白名单不提供 `revise`、`decide` 或原始观测登记。用户答复来自原生 MCP elicitation 响应或独立用户终端。模型没有自填“通过”来发布成果的命令。
 
@@ -132,7 +132,7 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 检查会从单目标与组合项目的 Git 交付中运行二进制。正式行为保证来自 Q0 证明；运行示例只检查编译和导出接入。实验目录均保留，不自动清理。
 
-Git、原生执行通道、受保护的控制端与完整 Lean 发行版仍是明确的外部信任前提。标准库、编译器及运行时正确性不由本内核证明。当前使用薄适配器与原生权限：普通 worker 不能直接访问正式仓库；核验候选的子进程不能读取正式仓库或改写规格输入。实现和对照记录见[权限接入](../experiments/isolation/README.md)。
+Git、原生执行通道、受保护的控制端与完整 Lean 发行版仍是明确的外部信任前提。标准库、编译器及运行时正确性不由本内核证明。当前使用薄适配器与原生权限：普通 worker 不能直接访问正式仓库；核验候选的子进程不能读取正式仓库或改写规格输入。实现边界和检查入口见[权限接入](permissions.md)。
 
 `Tests/workflow.py` 验证真实 MCP 适配器、Codex 原生实验、预算、回包重试、暂停与封存恢复、用户答复断线恢复、双 worker 视图、四类动作和实际导出的程序。`Tests/native.py` 使用原生 `mcpServer/tool/call` 和用户 elicitation 路由，零模型轮次；用户答复为测试客户端明确模拟。`Tests/WorkflowScenarios.lean` 检查跨流程的异常组合和历史重放，不把这些检查称为定理证明。
 

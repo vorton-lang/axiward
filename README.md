@@ -10,12 +10,12 @@ R0 支持 Windows + Codex，覆盖执行、精化、探索、用户决定四条�
 
 **当前产品验证器支持 Lean 有界 FIFO 队列的两个登记规格。** 原生权限限制普通 worker，薄适配器提供受控入口；核验进程另行受限。任意软件与多语言验证器尚未接入。
 
-R0 已通过固定范围的工程验收；真实 agent 持续推进、导航效果和用户最终验收仍待完成。
+R0 的固定范围工程检查已有通过记录；最近清理后的完整回归复验未完成。真实 agent 持续推进、导航效果和用户最终验收仍待完成。
 
 - [从源码开始使用](docs/product-guide.md) · [路线图](docs/roadmap.md)
 - [架构与信任边界](docs/architecture.md) · [状态转换规则](docs/kernel-contract.md)
-- [证明范围](docs/execution-slice.md) · [权限验收依据](experiments/isolation/README.md)
-- [历史原型与记录](history/README.md) · [原始系统设计](https://github.com/vorton-lang/axiward/discussions/1)
+- [证明范围](docs/execution-slice.md) · [权限边界与检查](docs/permissions.md)
+- [已审核设计与交付要求](docs/design.md)
 
 ## 构建与检查
 
