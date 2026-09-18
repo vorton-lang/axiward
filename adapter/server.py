@@ -1,7 +1,9 @@
 """Harness-owned MCP transport. All authoritative state transitions live in Lean/Git.
 
-One protected launch configuration binds one worker view. No worker tool accepts
+One launch configuration binds one worker view. No worker tool accepts
 an identity, canonical path, user answer, verifier result or arbitrary command.
+The current full-access worker follows workspace rules by instruction; this
+transport does not provide OS isolation against direct repository access.
 """
 import argparse
 import ctypes
@@ -12,7 +14,6 @@ import re
 import stat
 import subprocess
 import sys
-import tomllib
 import uuid
 from pathlib import Path
 
@@ -57,19 +58,6 @@ class Adapter:
         self.git = self.repo / ".git"
         if not self.git.is_dir():
             raise ValueError("managed project must have its own .git directory")
-        config = tomllib.loads((self.view / ".codex/config.toml").read_text(encoding="utf-8"))
-        profile_name = "axiward_" + worker[:16]
-        if config.get("default_permissions") != profile_name or "sandbox_mode" in config:
-            raise ValueError("this adapter requires its generated native Axiward profile; legacy full-access views are refused")
-        profile = config.get("permissions", {}).get(profile_name, {})
-        filesystem = profile.get("filesystem", {})
-        paths = {Path(key).resolve(): value for key, value in filesystem.items() if not key.startswith(":")}
-        expected = {self.repo: "deny", Path(str(self.repo) + ".checks"): "deny", self.exe.parent: "deny",
-                    Path(__file__).resolve().parent: "deny", self.view: "read", self.view / "work": "write", self.view / "tmp": "write"}
-        if paths != expected or len(filesystem) != len(expected) + 1 or filesystem.get(":root") != "read" or "extends" in profile:
-            raise ValueError("native profile does not protect this repository, controller and view")
-        if any(item.get("enabled", True) for name, item in config.get("mcp_servers", {}).items() if name != "axiward"):
-            raise ValueError("unreviewed privileged MCP transport in worker configuration")
         self.pending = {}
         self.elicitation = False
         self.audit = self.git / "axiward-transport" / (uuid.uuid4().hex + ".jsonl")
@@ -81,7 +69,7 @@ class Adapter:
         try:
             result = json.loads(run.stdout)
         except ValueError as exc:
-            raise RuntimeError("controller did not return JSON; inspect its protected logs") from exc
+            raise RuntimeError("controller did not return JSON; inspect its logs") from exc
         if run.returncode:
             raise RuntimeError(result.get("error", str(result)))
         return result
@@ -119,9 +107,9 @@ class Adapter:
     def read_input(self, file, allowed_root):
         """Validate the opened handle, not just a path checked before opening it.
 
-        This prevents junction/symlink swaps from turning the privileged adapter
-        into a file reader. Hard links are refused because their display path
-        alone cannot establish where the underlying file came from.
+        Checking the opened handle keeps junction/symlink swaps from changing
+        which source the adapter seals. Hard links are refused because their
+        display path alone cannot establish where the underlying file came from.
         """
         descriptor = os.open(file, os.O_RDONLY | os.O_BINARY | os.O_NOINHERIT)
         try:

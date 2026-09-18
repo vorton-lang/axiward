@@ -94,12 +94,15 @@ def main():
             assert state == b.call("status") == a.call("status")
             assert cli("overview", repo)["head"] == commit
             b.call("acknowledge", success=False, request_id="removed", node=0, serial=0)
+            b.call("next", success=False, request_id="missing-choice")
+            assert cli("overview", repo)["head"] == commit
             package = b.call("next", request_id="fresh-b", node=0, action="explore")
             decision = package["handoff"]["decisions"][0]
             assert decision["sourceOwner"] == owners[0] and decision["applicableNow"]
             assert decision["answer"]["comment"] == "durable preference marker"
             assert package["handoff"]["inputSnapshot"]["head"] == package["snapshot"]
             assert package["handoff"]["currentHead"] == package["status"]["head"]
+            checks.append("new work requires an explicit node and action without an implicit allocation")
             checks.append("fresh B automatically receives A's previously acknowledged decision and fixed input version")
 
             directory = Path(package["candidateDirectory"])

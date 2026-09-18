@@ -1,13 +1,11 @@
-"""Unmodified Codex router + MCP elicitation. No model turns or inference.
+"""Full-access Codex router + MCP elicitation. No model turns or inference.
 
 The ephemeral native context is a protocol fixture. User replies are simulated
 by this client and are not user approval of a real product.
 """
 import argparse
 import json
-import os
 import queue
-import shutil
 import subprocess
 import sys
 import threading
@@ -98,13 +96,6 @@ def main():
         assert (not result.get("isError")) == success, result
         return json.loads(result["content"][0]["text"])
 
-    def native_command(number, argv, cwd, profile):
-        params = {"command": list(map(str, argv)), "cwd": str(cwd), "timeoutMs": 30000}
-        if profile is not None:
-            params["permissionProfile"] = profile
-        send({"id": number, "method": "command/exec", "params": params})
-        return response(number)
-
     try:
         send({"id": 1, "method": "initialize", "params": {"clientInfo": {"name": "axiward-acceptance", "version": "0.1"},
               "capabilities": {"experimentalApi": True}}})
@@ -118,56 +109,8 @@ def main():
         question = {"prompt": "协议验收：先使用列表吗？", "subject": "仅模拟当前 FIFO 目标的偏好，不是真实用户批准。",
                     "options": [{"key": "list", "label": "使用不可变列表"}]}
         candidate_file = Path(package["candidateDirectory"]) / "question.json"
-        private_file = repo / "private-question.json"
-        private_file.write_text(json.dumps(question), encoding="utf-8")
-        os.link(private_file, candidate_file)
-        refusal = tool(40, "submit", success=False, request_id="linked-submit", node=0, serial=0)
-        assert "one link" in refusal["error"], refusal
-        candidate_file.unlink()  # One synthetic input file, not a directory cleanup.
         candidate_file.write_text(json.dumps(question), encoding="utf-8")
         tool(5, "submit", request_id="question-submit", node=0, serial=0)
-
-        checker = Path(str(repo) + ".checks")
-        checker.mkdir(exist_ok=True)
-        (checker / "private.txt").write_text("private-checker-input", encoding="utf-8")
-        external = root / "external.txt"
-        external.write_text("external research remains readable", encoding="utf-8")
-        sibling = repo / ".view" / "other-package"
-        sibling.mkdir()
-        (sibling / "private.txt").write_text("another package's draft", encoding="utf-8")
-        probe = """import json,sys
-from pathlib import Path
-view,repo,exe,adapter,checker,external=map(Path,sys.argv[1:]); result={}
-for name,path,write in [('work-write',view/'work'/'ok.txt',True),('config-write',view/'.codex'/'config.toml',True),('repo-read',repo/'.git'/'HEAD',False),('state-read',repo/'.axiward'/'state.json',False),('sibling-read',repo/'.view'/'other-package'/'private.txt',False),('repo-write',repo/'forged.txt',True),('controller-read',exe,False),('adapter-read',adapter,False),('checker-read',checker/'private.txt',False),('external-read',external,False)]:
- try:
-  if write: path.write_text('untrusted write',encoding='utf-8')
-  else: path.read_bytes()
-  result[name]='allowed'
- except OSError: result[name]='denied'
-print(json.dumps(result))
-"""
-        access = native_command(41, [sys.executable, "-c", probe, view, repo, exe, source / "adapter/server.py", checker, external],
-                                view / "work", None)
-        assert access["exitCode"] == 0, access
-        access_result = json.loads(access["stdout"])
-        assert access_result == {"work-write":"allowed", "config-write":"denied", "repo-read":"denied",
-                                 "state-read":"denied", "sibling-read":"denied",
-                                 "repo-write":"denied", "controller-read":"denied", "adapter-read":"denied",
-                                 "checker-read":"denied", "external-read":"allowed"}, access_result
-        copied = view / "work/copied-controller.exe"
-        shutil.copyfile(exe, copied)
-        attack = native_command(42, [copied, "decide", repo, "forged-user-answer", "0", "0", "list", "not a user"],
-                                view / "work", None)
-        assert attack["exitCode"] != 0, attack
-        state = cli("status", repo)
-        assert state["state"]["workflow"]["decisions"][0]["answer"] is None
-        unrelated = root / "unrelated-task"
-        unrelated.mkdir()
-        other = native_command(43, [sys.executable, "-c", "from pathlib import Path; Path('ok.txt').write_text('other task works')"],
-                               unrelated, ":workspace")
-        assert other["exitCode"] == 0 and (unrelated / "ok.txt").exists(), other
-        (root / "isolation.json").write_text(json.dumps({"access":access_result, "copiedController":attack,
-                                                        "unrelatedTask":other}, ensure_ascii=False, indent=2), encoding="utf-8")
         answer = tool(6, "ask_user", node=0, serial=0)
         assert len(questions) == 1 and questions[0]["threadId"] == thread, questions
         assert question["prompt"] in questions[0]["message"]
@@ -180,9 +123,8 @@ print(json.dumps(result))
         assert answer["status"]["head"] == answer["handoff"]["currentHead"]
         assert tool(9, "status") == status
         result = {"status": "passed", "nativeThread": thread, "modelTurns": 0,
-                  "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "repeatable complete handoff",
-                    "worker cannot read or write canonical storage", "worker cannot alter configuration or read controller/checker files",
-                    "copied controller cannot forge user answer", "hard-linked input rejected by opened-handle check", "external reads and unrelated task remain available"]}
+                  "workerMode": "user-approved full access; workspace rules are instructions",
+                  "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "repeatable complete handoff"]}
         (root / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
         print(json.dumps(result), flush=True)
     finally:

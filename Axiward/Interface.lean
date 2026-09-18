@@ -34,7 +34,7 @@ def allocated (s : State) (node serial : Nat) : Option Package := do
   -- The snapshot supplies the input; this function authenticates allocation only.
   return ⟨serial, owner, s.domain.scope, .drafting, action⟩
 
-/-- The protected session identity reserves one workspace for exactly one
+/-- The session identity reserves one workspace for exactly one
     allocation. The journal, rather than a writable workspace marker, binds it. -/
 def sessionPackage (s : State) (owner : String) : Option (Nat × Nat) := do
   let entry ← s.journal.entries.find? (fun e => match e.request.command with
@@ -530,7 +530,6 @@ def session (repo view python adapter : FilePath) : IO Json := do
   if ← view.pathExists then throw (IO.userError "session requires a new view directory")
   let repo ← IO.FS.realPath repo
   let repoText := repo.normalize.toString.toLower.replace "\\" "/"
-  let viewText := view.normalize.toString.toLower.replace "\\" "/"
   let parentText := (view.parent.getD view).normalize.toString.toLower.replace "\\" "/"
   unless parentText == repoText ++ "/.view" && view.fileName.isSome do
     throw (IO.userError "worker workspace must be a new direct child of the project's .view directory")
@@ -540,53 +539,24 @@ def session (repo view python adapter : FilePath) : IO Json := do
     throw (IO.userError ".view must not redirect outside its project")
   unless (← python.pathExists) && (← adapter.pathExists) do throw (IO.userError "Python or adapter not found")
   let exe ← IO.appPath
-  for privatePath in [Sandbox.workRoot repo, exe.parent.getD exe, adapter.parent.getD adapter] do
-    let text := privatePath.normalize.toString.toLower.replace "\\" "/"
-    if viewText == text || viewText.startsWith (text ++ "/") || text.startsWith (viewText ++ "/") then
-      throw (IO.userError "worker view must be separate from protected controller and checker directories")
   let worker ← Git.hashText repo s!"{view}\n{← IO.monoNanosNow}"
-  let profileName := "axiward_" ++ String.ofList (worker.toList.take 16)
   IO.FS.createDirAll (view / ".codex")
   IO.FS.createDirAll (view / "work")
   IO.FS.createDirAll (view / "tmp")
   let argv := #["-E", "-s", adapter.toString, "--exe", exe.toString, "--repo", repo.toString,
     "--view", view.toString, "--worker", worker]
-  let rules := ["\":root\" = \"read\"", Sandbox.pathRule view "read",
-    Sandbox.pathRule (view / "work") "write", Sandbox.pathRule (view / "tmp") "write",
-    Sandbox.pathRule repo "deny", Sandbox.pathRule (exe.parent.getD exe) "deny",
-    Sandbox.pathRule (Sandbox.workRoot repo) "deny",
-    Sandbox.pathRule (adapter.parent.getD adapter) "deny"]
-  let inventory ← IO.Process.output { cmd := "codex", args := #["mcp", "list", "--json"] }
-  unless inventory.exitCode == 0 do throw (IO.userError "cannot inspect MCP configuration; no unrestricted fallback")
-  let services ← Git.decode ((← Git.decode (Json.parse inventory.stdout)).getArr?)
-  let mut otherServers := ""
-  for service in services do
-    let name ← Git.decode (service.getObjValAs? String "name")
-    if name != "axiward" then
-      let transport ← Git.decode (service.getObjVal? "transport")
-      let kind ← Git.decode (transport.getObjValAs? String "type")
-      -- Some native defaults are not backed by a user-config transport table.
-      -- A complete inert definition avoids inheriting a privileged transport or
-      -- writing its credentials into the readable project configuration.
-      let disabled := if kind == "stdio" then
-          s!"command = {Sandbox.quote exe.toString}\nargs = [\"--version\"]\n"
-        else "url = \"https://disabled.invalid\"\n"
-      otherServers := otherServers ++
-        s!"\n[mcp_servers.{Sandbox.quote name}]\nenabled = false\n" ++ disabled
-  let config := "# Axiward: this worker must use the named native profile.\ndefault_permissions = " ++ Sandbox.quote profileName ++
-    "\napproval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }\n\n" ++
-    "[windows]\nsandbox = \"elevated\"\n\n[features]\napps = false\nplugins = false\nhooks = false\nbrowser_use = false\ncomputer_use = false\n\n" ++
-    "[permissions." ++ profileName ++ "]\ndescription = \"Axiward project worker\"\nfilesystem = { " ++ String.intercalate ", " rules ++
-    " }\nnetwork = { enabled = true }\n\n[shell_environment_policy.set]\n" ++
+  let config := "# Axiward: user-approved full-access mode; workspace limits are operating instructions.\nsandbox_mode = \"danger-full-access\"\n" ++
+    "approval_policy = { granular = { sandbox_approval = false, rules = false, mcp_elicitations = true, request_permissions = false, skill_approval = false } }\n\n" ++
+    "[shell_environment_policy.set]\n" ++
     "TMP = " ++ Sandbox.quote (view / "tmp").toString ++ "\nTEMP = " ++ Sandbox.quote (view / "tmp").toString ++ "\n\n" ++
-    s!"[mcp_servers.axiward]\ncommand = {(toJson python.toString).compress}\nargs = {(toJson argv).compress}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n" ++ otherServers
+    s!"[mcp_servers.axiward]\ncommand = {(toJson python.toString).compress}\nargs = {(toJson argv).compress}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n"
   IO.FS.writeFile (view / ".codex" / "config.toml") config
   IO.FS.writeFile (view / "AGENTS.md")
-    "# Axiward worker\n\nUse the Axiward MCP tools for project state. First read status and its complete handoff, choose a node and one of the four actions, then call next with explicit node and action. Read the returned handoff and ACTION.md. In an already bound workspace, next without a choice recovers the same package. This workspace binds to its first package. Editable package files live under work/; temporary external research files belong in tmp/. This view's unique native Axiward profile denies direct access to the canonical repository and protected controller. The thin adapter provides only permitted views and operations. Do not change permissions or invoke admin commands. External research remains available through native shell/network/web search; unrelated privileged MCP/browser/computer surfaces are disabled for this view.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package, new work requires a new session in another .view/ workspace. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. Every new package uses a separate workspace and session identity; reusing worker conversation context does not reuse its filesystem access. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over. Never self-approve user questions. Completion requires status.complete=true.\n"
+    "# Axiward worker\n\nThis task uses the current user-approved full-access mode. The workspace rules below are operating instructions, not OS-enforced isolation.\n\nUse the Axiward MCP tools for all project state changes and project materials. First read status and its complete handoff, choose a node and one of the four actions, then call next with explicit node and action. Read the returned handoff and ACTION.md. In an already bound workspace, next without a choice recovers the same package. This workspace binds to its first package. Write candidates only in this package's work/ area; temporary external research files belong in tmp/. Do not directly read other package spaces, change the formal project files or Git state, alter the controller or adapter, edit the session configuration, or invoke admin commands. External research remains available.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package, new work requires a new session in another .view/ workspace. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. Every new package uses a separate workspace and session identity. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over through the Axiward tools. Never self-approve user questions. Completion requires status.complete=true.\n"
   IO.FS.writeFile (view / "START.md")
-    "# Start here\n\nOpen this directory as a trusted Codex project. Confirm the Axiward MCP tools are available. Ask the agent: ‘Read status and handoff, choose a node and action, pass both to next, and work through that package. Ask me when a registered decision needs an answer.’\n\nOnly this project uses the generated configuration. Restart the task after setup. This initially empty workspace binds to one package on its first allocation. Start each new package with another session under the project .view/ directory. To recover an existing active package, reopen its owning view and call next without a new choice; prior conversation context is unnecessary. Packages never expire.\n"
+    "# Start here\n\nOpen this workspace in Codex and trust its containing project so the generated configuration is loaded. Confirm the Axiward MCP tools are available. This is the current user-approved full-access mode: workspace restrictions are instructions, not an operating-system sandbox guarantee. Keep the generated approval policy so registered questions can use the independent user channel.\n\nAsk the agent: ‘Read status and handoff, choose a node and action, pass both to next, and work through that package. Write candidates only in your package workspace. Use Axiward for project changes; do not directly alter the formal repository, Git state, controller or other package spaces. Ask me when a registered decision needs an answer.’\n\nOnly this project uses the generated configuration. Restart the task after setup. This initially empty workspace binds to one package on its first allocation. Start each new package with another session under the project .view/ directory. To recover an existing active package, reopen its owning view and call next without a new choice; prior conversation context is unnecessary. Packages never expire.\n"
   return Json.mkObj [("view", toJson view.toString), ("worker", toJson worker),
     ("configuration", toJson (view / ".codex" / "config.toml").toString),
-    ("message", toJson "Open this view as a trusted Codex project; no global configuration changed.")]
+    ("message", toJson "Open this workspace in its trusted Codex project using the generated full-access configuration. Workspace limits are instructions; no global configuration changed.")]
 
 end Axiward.Interface
