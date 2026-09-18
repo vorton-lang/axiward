@@ -206,6 +206,10 @@ def tool_result(call_id, value, error=False):
 
 
 def main():
+    # MCP is UTF-8 regardless of the Windows console or system code page.
+    sys.stdin.reconfigure(encoding="utf-8")
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(description=__doc__)
     for key in ("exe", "repo", "view", "worker"):
         parser.add_argument("--" + key, required=True)

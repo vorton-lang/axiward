@@ -72,7 +72,8 @@ def main():
                     send({"id": item["id"], "result": {"action": "accept", "content": {}}})
                 else:
                     questions.append({"threadId": params["threadId"], "message": params["message"]})
-                    send({"id": item["id"], "result": {"action": "accept", "content": {"choice": "list"}}})
+                    send({"id": item["id"], "result": {"action": "accept", "content": {
+                        "choice": "list", "comment": "本次中文答复仅用于协议验收"}}})
             elif "method" in item and "id" in item:
                 send({"id": item["id"], "error": {"code": -32601, "message": "not part of this protocol fixture"}})
             elif item.get("id") == number:
@@ -96,15 +97,17 @@ def main():
         thread = response(2)["thread"]["id"]
         tool(3, "status")
         package = tool(4, "next", request_id="question", node=0, action="requestDecision")
-        question = {"prompt": "Protocol fixture: select list?", "subject": "Synthetic preference for the current FIFO goal.",
-                    "options": [{"key": "list", "label": "Use a list"}]}
+        question = {"prompt": "协议验收：先使用列表吗？", "subject": "仅模拟当前 FIFO 目标的偏好，不是真实用户批准。",
+                    "options": [{"key": "list", "label": "使用不可变列表"}]}
         (Path(package["candidateDirectory"]) / "question.json").write_text(json.dumps(question), encoding="utf-8")
         tool(5, "submit", request_id="question-submit", node=0, serial=0)
         answer = tool(6, "ask_user", node=0, serial=0)
         assert len(questions) == 1 and questions[0]["threadId"] == thread, questions
+        assert question["prompt"] in questions[0]["message"]
         assert answer["decision"] == {"answered": {"serial": 0, "applicable": True}}, answer
         status = tool(7, "status")
         assert len(status["inbox"]) == 1
+        assert status["inbox"][0]["decision"]["answer"]["comment"] == "本次中文答复仅用于协议验收"
         tool(8, "acknowledge", request_id="ack", node=0, serial=0)
         assert tool(9, "status")["inbox"] == []
         result = {"status": "passed", "nativeThread": thread, "modelTurns": 0,
