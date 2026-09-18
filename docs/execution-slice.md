@@ -133,8 +133,8 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 | 检查 | 实际边界 | 秒 |
 | --- | --- | ---: |
-| `Tests/Audit.lean` | 2166 个内核声明的公理/实现替换审计，无 sorry 或额外公理。 | 5.199 |
-| `leanchecker Axiward` | 独立重放已编译证明。 | 4.304 |
+| `Tests/Audit.lean` | 当前布局编译树的 2166 个内核声明审计，无 sorry 或额外公理。 | 5.752 |
+| `leanchecker Axiward` | 独立重放当前布局编译树的证明。 | 4.156 |
 | `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 |
 | `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 |
 | `integration.py --case accepted` | 项目内 `.checks/` 的实际 Lean 构建、审计、证明重放、输入绑定、接纳、默认根内交付并运行。 | 25.015 |
