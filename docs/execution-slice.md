@@ -129,31 +129,31 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 ## 验证与边界
 
-每项检查含准备不超过 30 秒，超时属于失败，不能计为性能达标。以下是当前共享源码实现的实测；证据保留于 `.work/cli-*`，不入 Git、不自动清理。
+每项检查含准备不超过 30 秒，超时属于失败，不能计为性能达标。下表按实际执行阶段保留观测，并非最终源码 HEAD 的全量复验清单。`46阶段` 指形成 `46d022f` 的共享源码/诊断实现工作树；`00阶段` 指形成 `00bae01` 的依赖预检工作树；`布局阶段` 指形成 `e2338c3` 的目录内收工作树。两项内核短审计实际执行于 `e2338c3` 的最终编译树，此后仅更新文档；布局阶段没有重跑标为前两个阶段的检查。证据保留于 `.work/`，不入 Git、不自动清理。
 
-| 检查 | 实际边界 | 秒 |
-| --- | --- | ---: |
-| `Tests/Audit.lean` | 当前布局编译树的 2166 个内核声明审计，无 sorry 或额外公理。 | 5.752 |
-| `leanchecker Axiward` | 独立重放当前布局编译树的证明。 | 4.156 |
-| `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 |
-| `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 |
-| `integration.py --case accepted` | 项目内 `.checks/` 的实际 Lean 构建、审计、证明重放、输入绑定、接纳、默认根内交付并运行。 | 25.015 |
-| `integration.py --case wrong-fifo` | 新启动器实际拒绝错误证明，保持原始诊断中的 ⊢、α 及错误阶段。 | 11.796 |
-| `layout.py` 四动作 | execute/refine/explore/requestDecision 各独立检查包根文件、真实封存字节及元数据排除；核验调用明确截断，不提供模拟 passed。 | 17.125 / 17.141 / 15.469 / 15.484 |
-| `layout.py --case delivery` | 默认根内交付、实际输出路径、不覆盖、拒绝外部/保留路径；使用已接纳的 Git 夹具，不重复数学核验。 | 3.844 |
-| `workflow.py --case intent` | 扁平包根 trials 路径的真实适配器/Git 意图重放，受控协议输入，不重新派发操作。 | 14.891 |
-| `integration.py --case merged` | 真实三方合并与联合数学核验，双方源码保留、旧凭据更新、未完成条款不加入。前置已接纳记录为夹具。 | 27.500 |
-| `integration.py --case merge-breaks-prior` | B 的新目标之外，删除 A 的已接纳保证会被实际 Lean 拒绝；旧源码/成果不变。前置记录为夹具。 | 15.594 |
-| `integration.py --case assembled` | 夹具提供子成果，生产控制器实际核验共享源码的父目标并运行交付物。 | 25.359 |
-| `integration.py --case merge-conflict` | 真实 Git 内容冲突，结束包并保留原稿；不运行数学核验。 | 11.829 |
-| `integration.py --case merge-race` | 真实 Git/CAS 拒绝旧 HEAD 的结果并保留封存包；结果本身为协议夹具。 | 13.641 |
-| `workflow.py --case route` | 路线失效报告保留共享节点，真实 CLI 回收指定包；状态证明值为夹具。 | 6.047 |
-| 独立发行目录预验 | 脱离源码及 Lean/Python 环境的 exe 启动、两套策略初始化、session、真实适配器 stdio 的 status/next/cancel；没有原生 Codex 路由或模型轮次。 | 16.172 |
-| `diagnostic_handoff.py --case acquisition` | 新包直接收到真实失败诊断；原稿与实际合并源码区分正确，完整原始证据可读。 | 13.063 |
-| `diagnostic_handoff.py` 访问拒绝 | evidence/history/candidate/previous-file/initial-source 各独立调用；current 别名无旁路、首次源码填充不绕过拒绝、恢复后仍读取固定基线。 | 14.344 / 14.453 / 12.328 / 11.890 / 12.297 |
-| `runtime_dependency.py --case preflight` | 子进程 PATH 缺 Codex 时，初始化/session/新包/新封存均提前拒绝；已登记 begin/submit 重放、next 恢复和请求冲突检查保持原语义。 | 20.422 |
-| `runtime_dependency.py --case late` | 封存后入口消失，真实 CLI 返回具体 Codex/PATH 原因并存入证据；未启动核验阶段，旧包按 unresolved 结束。 | 17.609 |
-| `Tests/Diagnostics.lean` | 真实 Git 证据中的完整诊断、实际合并输入、位置、目标/前提及缺失信息；消息为协议夹具。 | 3.487 |
+| 检查 | 实际边界 | 秒 | 执行阶段 |
+| --- | --- | ---: | --- |
+| `Tests/Audit.lean` | 当前布局编译树的 2166 个内核声明审计，无 sorry 或额外公理。 | 5.752 | 布局阶段 |
+| `leanchecker Axiward` | 独立重放当前布局编译树的证明。 | 4.156 | 布局阶段 |
+| `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 | 46阶段 |
+| `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 | 46阶段 |
+| `integration.py --case accepted` | 项目内 `.checks/` 的实际 Lean 构建、审计、证明重放、输入绑定、接纳、默认根内交付并运行。 | 25.015 | 布局阶段 |
+| `integration.py --case wrong-fifo` | 新启动器实际拒绝错误证明，保持原始诊断中的 ⊢、α 及错误阶段。 | 11.796 | 布局阶段 |
+| `layout.py` 四动作 | execute/refine/explore/requestDecision 各独立检查包根文件、真实封存字节及元数据排除；核验调用明确截断，不提供模拟 passed。 | 17.125 / 17.141 / 15.469 / 15.484 | 布局阶段 |
+| `layout.py --case delivery` | 默认根内交付、实际输出路径、不覆盖、拒绝外部/保留路径；使用已接纳的 Git 夹具，不重复数学核验。 | 3.844 | 布局阶段 |
+| `workflow.py --case intent` | 扁平包根 trials 路径的真实适配器/Git 意图重放，受控协议输入，不重新派发操作。 | 14.891 | 布局阶段 |
+| `integration.py --case merged` | 真实三方合并与联合数学核验，双方源码保留、旧凭据更新、未完成条款不加入。前置已接纳记录为夹具。 | 27.500 | 46阶段 |
+| `integration.py --case merge-breaks-prior` | B 的新目标之外，删除 A 的已接纳保证会被实际 Lean 拒绝；旧源码/成果不变。前置记录为夹具。 | 15.594 | 46阶段 |
+| `integration.py --case assembled` | 夹具提供子成果，生产控制器实际核验共享源码的父目标并运行交付物。 | 25.359 | 46阶段 |
+| `integration.py --case merge-conflict` | 真实 Git 内容冲突，结束包并保留原稿；不运行数学核验。 | 11.829 | 46阶段 |
+| `integration.py --case merge-race` | 真实 Git/CAS 拒绝旧 HEAD 的结果并保留封存包；结果本身为协议夹具。 | 13.641 | 46阶段 |
+| `workflow.py --case route` | 路线失效报告保留共享节点，真实 CLI 回收指定包；状态证明值为夹具。 | 6.047 | 46阶段 |
+| 独立发行目录布局验收 | 脱离源码及 Lean/Python 环境的 exe 启动、两套策略初始化、session、真实适配器 stdio 的 status/next/cancel；没有原生 Codex 路由或模型轮次。 | 17.297 | e2338c3发行物 |
+| `diagnostic_handoff.py --case acquisition` | 新包直接收到真实失败诊断；原稿与实际合并源码区分正确，完整原始证据可读。 | 13.063 | 46阶段 |
+| `diagnostic_handoff.py` 访问拒绝 | evidence/history/candidate/previous-file/initial-source 各独立调用；current 别名无旁路、首次源码填充不绕过拒绝、恢复后仍读取固定基线。 | 14.344 / 14.453 / 12.328 / 11.890 / 12.297 | 46阶段 |
+| `runtime_dependency.py --case preflight` | 子进程 PATH 缺 Codex 时，初始化/session/新包/新封存均提前拒绝；已登记 begin/submit 重放、next 恢复和请求冲突检查保持原语义。 | 20.422 | 00阶段 |
+| `runtime_dependency.py --case late` | 封存后入口消失，真实 CLI 返回具体 Codex/PATH 原因并存入证据；未启动核验阶段，旧包按 unresolved 结束。 | 17.609 | 00阶段 |
+| `Tests/Diagnostics.lean` | 真实 Git 证据中的完整诊断、实际合并输入、位置、目标/前提及缺失信息；消息为协议夹具。 | 3.487 | 46阶段 |
 
 `merged` 首跑被 28 秒保护终止，不计通过；保留核验全部阶段后减少重复规格摘要生成，第二次才通过。不可变诊断投影另在 `merge-breaks-prior` 的真实失败上只读核对，1.467 秒：实际合并候选不同于原稿，读取 `Gate.lean:12:48` 的缺失定理诊断，HEAD 不变且未重跑核验。新包完整交接和访问拒绝的六个独立边界均由 `Tests/diagnostic_handoff.py` 验证，包含 Git clone、session 和 next；原失败项目 HEAD 不变，未生成新的核验目录。可先运行 `integration.py --case merge-breaks-prior`，再用 `python Tests/diagnostic_handoff.py --repo <该检查输出>/project --output <新目录> --case acquisition`；其他 case 为 evidence、history、candidate、previous-file、initial-source。纯诊断投影入口是 `lake env lean --run Tests/Diagnostics.lean <新目录>`。
 
