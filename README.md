@@ -4,7 +4,7 @@
 
 **[先看当前项目状态](docs/status.md)**：已有什么、缺什么、正在做什么、下一次交付什么。
 
-Axiward 0.2 是本地项目控制系统。Agent 在独立视图中工作；Lean 控制端核验操作、维护精化图，Git 保存完整状态和证据。模型不能通过自报成功、提交日志或伪造用户答复来关闭目标。
+Axiward 是本地项目控制系统。Agent 在独立视图中工作；Lean 控制端核验操作、维护精化图，Git 保存完整状态和证据。
 
 R0 支持 Windows + Codex，覆盖执行、精化、探索、用户决定四条流程，以及导航、并行工作包、暂停恢复、规格变更、成果复用和交付导出。
 
@@ -12,15 +12,10 @@ R0 支持 Windows + Codex，覆盖执行、精化、探索、用户决定四条�
 
 R0 已通过固定范围的工程验收；真实 agent 持续推进、导航效果和用户最终验收仍待完成。
 
-- [完整路线图与当前进度](docs/roadmap.md)
-- [0.2 权限版本交付说明](docs/releases/0.2.0.md)
-- [本轮权限实现与验收](experiments/isolation/README.md)
-- [早期 R0 交付记录](docs/releases/0.1.0.md)
-- [开始使用、四类流程与恢复方法](docs/product-guide.md)
-- [架构与信任边界](docs/architecture.md)
-- [实际实现和证明范围](docs/execution-slice.md)
-- [已审核的状态转换规则](docs/kernel-contract.md)
-- [原始系统设计](https://github.com/vorton-lang/axiward/discussions/1)
+- [从源码开始使用](docs/product-guide.md) · [路线图](docs/roadmap.md)
+- [架构与信任边界](docs/architecture.md) · [状态转换规则](docs/kernel-contract.md)
+- [证明范围](docs/execution-slice.md) · [权限验收依据](experiments/isolation/README.md)
+- [历史原型与记录](history/README.md) · [原始系统设计](https://github.com/vorton-lang/axiward/discussions/1)
 
 ## 构建与检查
 
@@ -31,19 +26,11 @@ lake build axiward store_scenarios workflow_scenarios
 lake env lean Tests/Audit.lean
 lake env leanchecker Axiward
 .\.lake\build\bin\workflow_scenarios.exe
-python Tests/integration.py --toolchain C:\Tools\lean-4.34.0-windows --output C:\Checks\new-regression
-python Tests/workflow.py --toolchain C:\Tools\lean-4.34.0-windows --output C:\Checks\new-workflow
-python Tests/native.py --toolchain C:\Tools\lean-4.34.0-windows --output C:\Checks\new-native
+python Tests/integration.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-regression
+python Tests/workflow.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-workflow
+python Tests/native.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-native
 ```
 
 检查保留证据目录，不自动清理。`workflow.py` 和 `native.py` 的用户答复由测试客户端模拟，不是用户对真实产品的批准；不调用模型 API 或进行模型推理。
-
-## 生成发行包
-
-```powershell
-pwsh -File scripts/package.ps1 -Toolchain C:\Tools\lean-4.34.0-windows -Destination .\dist\axiward-0.2.0
-```
-
-输出独立 CLI、标准库 Python 适配器、示例、说明和 SHA-256 清单，并生成 ZIP。首次启动和配置专用 worker 视图见[使用说明](docs/product-guide.md)。没有项目守护进程，也不修改全局 Codex 配置。
 
 MIT License.

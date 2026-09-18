@@ -74,12 +74,9 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--toolchain", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--package", type=Path)
     args = parser.parse_args()
     source = Path(__file__).resolve().parent.parent
-    if args.package:
-        source = args.package.resolve()
-    exe = source / "axiward.exe" if args.package else source / ".lake/build/bin/axiward.exe"
+    exe = source / ".lake/build/bin/axiward.exe"
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     repo = output / "project.git"

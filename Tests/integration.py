@@ -14,22 +14,21 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--toolchain", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--executable", type=Path)
     args = parser.parse_args()
     source = Path(__file__).resolve().parent.parent
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    executable = args.executable.resolve() if args.executable else source / ".lake/build/bin/axiward.exe"
+    executable = source / ".lake/build/bin/axiward.exe"
     policy = source / "examples/fifo/policy"
     original = source / "examples/fifo/candidate"
     events = []
     completed = []
     event_lock = Lock()
 
-    def command(argv, *, success=True, env=None, data=None):
+    def command(argv, *, success=True, env=None, data=None, timeout=150):
         result = subprocess.run(
             list(map(str, argv)), input=data, capture_output=True,
-            text=True, encoding="utf-8", env=env, timeout=150,
+            text=True, encoding="utf-8", env=env, timeout=timeout,
         )
         event = {"argv": list(map(str, argv)), "exit": result.returncode,
                  "stdout": result.stdout, "stderr": result.stderr}
@@ -41,7 +40,10 @@ def main():
         return result.stdout
 
     def cli(*argv, success=True, env=None):
-        return json.loads(command([executable, *argv], success=success, env=env))
+        # One check can also verify several ancestor nodes. Use the native MCP
+        # tool-call budget for this work; ordinary commands keep the short bound.
+        timeout = 600 if argv[0] in ("check", "compose") else 150
+        return json.loads(command([executable, *argv], success=success, env=env, timeout=timeout))
 
     def git(repo, *argv, data=None, env=None):
         return command(["git", f"--git-dir={repo}", "-c", "user.name=Axiward tests",

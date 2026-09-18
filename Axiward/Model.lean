@@ -321,6 +321,4 @@ def Integrity (s : Domain) : Prop :=
 
 def initialDomain (scope : Scope) : Domain := { scope }
 
-def isClosed (s : Domain) : Bool := s.published.isSome
-
 end Axiward

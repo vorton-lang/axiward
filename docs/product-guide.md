@@ -1,8 +1,12 @@
-# Axiward 0.2 · 使用说明
+# Axiward · 使用说明
 
 **Axiward 是一个本地项目控制系统。** Agent 在工作视图里提出实现、分解任务、探索或询问用户；Lean 控制端决定哪些操作可以进入正式项目。正式状态、源码和证据共用一条 Git 历史。
 
-这个版本交付完整的 R0 工作闭环。验证器支持 **Lean 有界 FIFO 队列**：满时拒绝，以及满时覆盖最旧元素，两种已登记规格。其他产品规格会明确拒绝导入，不能用这两个示例冒充通用软件验证能力。
+当前支持 **Lean 有界 FIFO 队列**的两种登记规格：满时拒绝、满时覆盖最旧元素。控制流程已通过工程检查；真实 agent 自主推进仍待实战验证。
+
+按当前问题阅读：[从源码启动](#从源码启动) → [四类工作流程](#agent-的四条工作流程) → [暂停与变更](#暂停变更恢复) → [交付](#完成与交付)。规格见下节，具体操作按对应小节查阅。
+
+## 队列规格
 
 示例根规格的六项承诺如下；容量是任意自然数，允许为零。
 
@@ -24,21 +28,23 @@
 
 你不用替 agent 写实现、证明或维护状态图。
 
-## 安装与第一次启动
+## 从源码启动
 
 需要 Windows x64、Git、Python 3.11+、Lean **4.34.0 的完整发行版**、已安装的 Codex。沿用现有 Codex 会话与账户；Axiward 不调用模型 API，也不要求另配 API key。Python 适配器只使用标准库。
 
-解压发行包。下面在解压目录运行；把路径换成本机位置：
+下面在 Axiward 源码仓库根目录运行；把 Lean 路径换成本机位置。项目和视图使用两个新的目录，示例放在仓内 `.work/`：
 
 ```powershell
 $app = (Get-Location).Path
-$repo = 'C:\AxiwardData\queue.git'       # 新目录：正式项目
-$view = 'C:\AxiwardWork\queue-worker'    # 另一个新目录：agent 视图
+$cli = Join-Path $app '.lake\build\bin\axiward.exe'
+$repo = Join-Path $app '.work\queue\project.git'
+$view = Join-Path $app '.work\queue\view'
 $lean = 'C:\Tools\lean-4.34.0-windows'
 $python = (Get-Command python).Source
 
-& "$app\axiward.exe" init $repo "$app\examples\fifo\policy" $lean
-& "$app\axiward.exe" session $repo $view $python "$app\adapter\server.py"
+& "$lean\bin\lake.exe" build axiward
+& $cli init $repo "$app\examples\fifo\policy" $lean
+& $cli session $repo $view $python "$app\adapter\server.py"
 ```
 
 把 `$view` 加入 Codex，设为受信项目，重新打开任务，确认出现 Axiward MCP 工具。生成的配置只作用于这个工作视图；没有修改全局配置。
@@ -57,7 +63,7 @@ $python = (Get-Command python).Source
 
 `AGENTS.md` 说明用法，权限由实际配置执行。原生网络与外部文件读取仍可用于调研；其他有独立执行权限的 MCP、浏览器及电脑控制入口在本视图关闭。其他任务的配置不变。
 
-**从 0.1 升级：停止旧的完全访问任务，用 `session` 创建新视图再启动。** 新适配器拒绝旧的完全访问配置；已有 Git 历史保留。不要把新视图切换为完全访问模式。
+已有完全访问配置的旧视图，需要停止对应任务后用 `session` 创建受限新视图。适配器拒绝完全访问配置，正式项目的 Git 历史保留。
 
 ## Agent 的四条工作流程
 
@@ -108,7 +114,7 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 支持 MCP elicitation 的客户端会直接显示问题；不支持时，用户从独立终端运行：
 
 ```powershell
-& "$app\axiward.exe" decide $repo 'answer-001' 0 1 'list' '先验证简单实现'
+& $cli decide $repo 'answer-001' 0 1 'list' '先验证简单实现'
 ```
 
 这里 `0 1` 是节点与包编号，以实际问题为准。此命令不开放给 worker。离线时不会启动后台任务；重新打开原任务，`status` / `next` 会带回未读答复。
@@ -116,9 +122,9 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 ## 暂停、变更、恢复
 
 ```powershell
-& "$app\axiward.exe" overview $repo
-& "$app\axiward.exe" pause $repo 'pause-001' '我暂时离开'
-& "$app\axiward.exe" resume $repo 'resume-001'
+& $cli overview $repo
+& $cli pause $repo 'pause-001' '我暂时离开'
+& $cli resume $repo 'resume-001'
 ```
 
 暂停阻止新工作包、新实验和新核验。已开始的工作可以回传结果；仍可保存终稿、取消和接收用户答复。暂停不会把在途操作变成“未执行”。
@@ -126,8 +132,8 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 根规格变更先预览，再由用户使用预览令牌确认：
 
 ```powershell
-& "$app\axiward.exe" revise-preview $repo 'change-001' "$app\examples\fifo\policy-overwrite"
-& "$app\axiward.exe" revise $repo 'change-001' "$app\examples\fifo\policy-overwrite" '<reviewToken>'
+& $cli revise-preview $repo 'change-001' "$app\examples\fifo\policy-overwrite"
+& $cli revise $repo 'change-001' "$app\examples\fifo\policy-overwrite" '<reviewToken>'
 ```
 
 只使依赖变化要求的成果失效；保留其他成果和历史。进行中的旧包不自动取消，过期证据不能发布。令牌同时绑定旧根与新提案，根改变后须重新预览。
@@ -145,7 +151,7 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 对账命令仅供用户在确认执行进程已停止后使用：
 
 ```powershell
-& "$app\axiward.exe" reconcile $repo 'reconcile-001' 0 '<operationId>' '已确认原执行进程退出，结果丢失'
+& $cli reconcile $repo 'reconcile-001' 0 '<operationId>' '已确认原执行进程退出，结果丢失'
 ```
 
 需要撤回某项材料的后续导出权限：`access <repo> <请求ID> <资源ID或前缀> deny`；用 `allow` 恢复该条规则。已经导出的文件或进入上下文的内容不会被抹除。
@@ -155,8 +161,9 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 `rootClosed` 表示根目标有当前有效证明；`complete` 还要求当前路线没有活动包、没有未解决的在途实验。只有 `complete=true` 才能导出交付：
 
 ```powershell
-& "$app\axiward.exe" deliver $repo 'C:\AxiwardDelivery\queue-v1'
-& 'C:\AxiwardDelivery\queue-v1\.lake\build\bin\fifo_demo.exe' 2 a b c
+$delivery = Join-Path $app '.work\queue\delivered'
+& $cli deliver $repo $delivery
+& "$delivery\.lake\build\bin\fifo_demo.exe" 2 a b c
 ```
 
 输出目录包含实现、证明、可执行文件，以及 `axiward-delivery.json`（规格、Git 快照、产物摘要）和 `axiward-receipt.json`。导出要求新目录，不覆盖已有交付物。

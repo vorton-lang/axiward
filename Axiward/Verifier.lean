@@ -84,7 +84,6 @@ structure Receipt where
 structure Result where
   verdict : Verdict
   evidence : String
-  scratchDirectory : String
 
 private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
     (work : FilePath) : IO Result := do
@@ -97,7 +96,7 @@ private def checkCore (repo : FilePath) (scope : Scope) (candidate : Candidate)
   let controller ← digestFile repo (← IO.appPath)
   let mut evidence : Array Git.Blob := #[]
   let retain (blobs : Array Git.Blob) (verdict : Verdict) : IO Result := do
-    return ⟨verdict, ← Git.tree repo none blobs, work.toString⟩
+    return ⟨verdict, ← Git.tree repo none blobs⟩
   let binding ← Git.hashText repo (Json.mkObj [
     ("scope", toJson scope), ("candidate", toJson candidate), ("controller", toJson controller)]).compress
   evidence := evidence.push ⟨"input.json", binding⟩
@@ -158,6 +157,6 @@ def check (repo : FilePath) (scope : Scope) (candidate : Candidate) : IO Result 
       if ← (work / name).pathExists then
         logs := logs.push ⟨name, ← Git.hashFile repo (work / name)⟩
     return ⟨.unknown "verifier could not complete; see retained evidence",
-      ← Git.tree repo none logs, work.toString⟩
+      ← Git.tree repo none logs⟩
 
 end Axiward.Verifier

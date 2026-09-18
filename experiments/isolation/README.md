@@ -1,6 +1,6 @@
 # 权限边界接入
 
-状态：权限实现、原生绕过检查、完整流程及 17 组发布回归均通过。
+状态：权限实现、原生绕过检查、完整流程及 17 组回归均通过。
 
 已修复的缺口：旧 `session` 生成 `danger-full-access`，普通命令可以绕过 MCP。现在每个视图生成独立的原生权限方案，MCP 位于受信侧；核验候选也通过受限进程执行。
 
@@ -32,7 +32,7 @@
 
 记录：[原生接入与绕过检查](native-isolation-05.json)、[核验进程](verifier-results.json)、[完整流程](workflow-results.json)。原始运行目录在仓内 `.work/`，公开记录含相应摘要；路径做了脱敏。
 
-最终结果：[安装包原生检查](release-native.json)、[配置拒绝](configuration-guard.json)、[完整回归](regression-results.json)。
+其他记录：[历史打包产物的原生检查](release-native.json)、[配置拒绝](configuration-guard.json)、[完整回归](regression-results.json)。历史记录对应各自注明的输入与版本。
 
 ## 实现位置
 
