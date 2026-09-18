@@ -8,6 +8,10 @@ R0 支持 Windows + Codex，覆盖执行、精化、探索、用户决定四条�
 
 **当前产品验证器支持 Lean 有界 FIFO 队列的两个登记规格。** 控制闭环可以使用；任意软件、多语言验证器和强制沙箱隔离不在本版支持范围。完全访问权限下沿用已批准的访问规则。
 
+R0 已通过固定范围的工程验收；真实 agent 持续推进、导航效果和用户最终验收仍待完成。
+
+- [完整路线图与当前进度](docs/roadmap.md)
+- [R0 交付状态与验收依据](docs/releases/0.1.0.md)
 - [开始使用、四类流程与恢复方法](docs/product-guide.md)
 - [架构与信任边界](docs/architecture.md)
 - [实际实现和证明范围](docs/execution-slice.md)
