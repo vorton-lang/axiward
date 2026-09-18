@@ -28,46 +28,20 @@ def status (loaded : Git.Loaded) : Json :=
     ("map", toJson (loaded.state.nodes.toList.zipIdx.map (fun (n, id) => mapNode loaded.state id n))),
     ("transitions", toJson loaded.state.journal.entries.length)]
 
-structure Recommendation where
-  action : Action
-  allowed : Bool
-  score : Nat
-  reason : String
-  deriving ToJson
-
-/-- Replaceable, deterministic R0 navigator. Scores express heuristics, never
-    mathematical confidence or authority to bypass admission checks. -/
-def recommendations (s : State) (id : Nat) (n : Node) : List Recommendation := Id.run do
-  let available := !s.domain.workflow.paused && n.domain.active.isNone && n.domain.published.isNone &&
-    scopeUsable s.nodes n.domain.scope
-  let attempts := s.journal.entries.filter (fun e => e.request.node == id)
-  let recent := (attempts.reverse.takeWhile (fun e => match e.reply with
-    | .explored _ | .answered _ true => false | _ => true))
-  let failures := recent.filter (fun e => match e.reply with
-    | .rejected _ _ | .unresolved _ _ | .compositionFailed _ => true | _ => false)
-  let lastAction := (attempts.reverse.find? (fun e => match e.request.command with
-    | .begin _ _ => true | _ => false)).bind (fun e => match e.request.command with
-      | .begin _ a => some a | _ => none)
-  let explored := lastAction == some .explore
-  return [
-    ⟨.execute, available && n.route.isNone, if failures.isEmpty || explored then 80 else 35,
-      "Generate one implementation plus proof when this goal fits one attempt."⟩,
-    ⟨.refine, available, if n.route.isSome then 75 else if n.domain.scope.requirements.length > 3 then 90 else 50,
-      "Decompose or replace the route; every new obligation and implication is checked."⟩,
-    ⟨.explore, available, if !failures.isEmpty && !explored then 95 else 40,
-      s!"{failures.length} prior unsuccessful attempts; gather information before another implementation."⟩,
-    ⟨.requestDecision, available, if failures.length ≥ 3 then 100 else 20,
-      "Ask a concrete bounded question when a user preference or repeated lack of progress blocks work."⟩]
-
-def navigation (s : State) : Json :=
-  toJson ((currentNodes s.nodes).filterMap fun id => s.nodes[id]?.map fun n =>
-    Json.mkObj [("node", toJson id), ("recommendations", toJson (recommendations s id n))])
-
 def allocated (s : State) (node serial : Nat) : Option Package := do
   let entry ← s.journal.entries.find? (fun e => e.request.node == node && e.reply == .acquired serial)
   let .begin owner action := entry.request.command | none
   -- The snapshot supplies the input; this function authenticates allocation only.
   return ⟨serial, owner, s.domain.scope, .drafting, action⟩
+
+/-- The protected session identity reserves one workspace for exactly one
+    allocation. The journal, rather than a writable workspace marker, binds it. -/
+def sessionPackage (s : State) (owner : String) : Option (Nat × Nat) := do
+  let entry ← s.journal.entries.find? (fun e => match e.request.command with
+    | .begin worker _ => worker == owner
+    | _ => false)
+  let .acquired serial := entry.reply | none
+  return (entry.request.node, serial)
 
 def packageSnapshot (repo : FilePath) (loaded : Git.Loaded) (node serial : Nat) : IO String := do
   let some event := loaded.state.journal.entries.find? (fun e => e.request.node == node && e.reply == .acquired serial)
@@ -87,6 +61,8 @@ def packageInfo (repo : FilePath) (owner : String) (node serial : Nat) : IO Json
   let loaded ← Git.load repo
   let some p := allocated loaded.state node serial | throw (IO.userError "unknown allocation")
   unless p.owner == owner do throw (IO.userError "wrong worker")
+  unless sessionPackage loaded.state owner == some (node, serial) do
+    throw (IO.userError "workspace is bound to another package")
   let some n := loaded.state.nodes[node]? | throw (IO.userError "unknown node")
   return Json.mkObj [("domain", toJson n.domain), ("action", toJson p.action)]
 
@@ -186,7 +162,7 @@ def attempts (s : State) (node : Nat) (snapshot : Option State) : List Json :=
 def nextStep (s : State) (n : Node) : String :=
   match n.domain.active with
   | none => if n.domain.published.isSome then "Current admitted result; retain its scope and receipt."
-      else "Goal remains open. Use navigation to acquire a new package or finish its dependencies."
+      else "Goal remains open. Choose a node and action from the project state and handoff, then request a new package."
   | some p =>
     if n.domain.workflow.operations.any (fun op => op.serial == p.serial && op.result.isNone) then
       "An operation is outstanding. Do not repeat it; recover its record or request user reconciliation."
@@ -285,7 +261,7 @@ def handoff (loaded : Git.Loaded) (input : Option (Nat × State × String) := no
       "Only the allocated owner may write to an active package. An ended attempt needs a new package for changes; resume only checks the original sealed candidate."])]
 
 def workerStatus (loaded : Git.Loaded) : Json :=
-  Json.mkObj [("status", status loaded), ("navigation", navigation loaded.state), ("handoff", handoff loaded)]
+  Json.mkObj [("status", status loaded), ("handoff", handoff loaded)]
 
 def rawEvidence (repo : FilePath) (tree : String) : IO String := do
   let names ← Git.checked repo #["ls-tree", "-r", "--name-only", tree]
@@ -407,22 +383,24 @@ def resources (repo : FilePath) (loaded : Git.Loaded) (owner : String) (node ser
         result := result ++ [⟨id, "Current model interpretation; not verified fact", content⟩]
   return result
 
-def viewDirectory (root : FilePath) (node serial : Nat) : FilePath := root / "work" / "packages" / s!"{node}-{serial}"
+def viewDirectory (root : FilePath) (_node _serial : Nat) : FilePath := root / "work"
 
 def actionGuide : Action → String
   | .execute =>
-    "# Execute\n\nRead Spec.lean, Goal.lean and claims.json. Write candidate/Queue.lean and candidate/Proofs.lean. The controller mounts them as Axiward.Queue and Axiward.Proofs alongside the frozen Axiward.Spec. Proofs.lean should import Axiward.Queue and Axiward.Spec and define the exact theorem names/types shown in Goal.lean (in namespace Axiward). Implement the API referenced by those predicates; no sorry, added axioms, unsafe or runtime replacements.\n\nSubmit once with submit. A rejection ends the package: read evidence.json and call next. Resume only continues a sealed check. Exploration requires a separate explore package. Child proof files should normally contain only the assigned claims so distinct modules do not redefine the same declarations.\n"
+    "# Execute\n\nRead Spec.lean, Goal.lean and claims.json. Write candidate/Queue.lean and candidate/Proofs.lean. The controller mounts them as Axiward.Queue and Axiward.Proofs alongside the frozen Axiward.Spec. Proofs.lean should import Axiward.Queue and Axiward.Spec and define the exact theorem names/types shown in Goal.lean (in namespace Axiward). Implement the API referenced by those predicates; no sorry, added axioms, unsafe or runtime replacements.\n\nSubmit once with submit. A rejection ends the package: read evidence.json and continue in a new session. Resume only continues a sealed check. Exploration requires a separate explore package. Child proof files should normally contain only the assigned claims so distinct modules do not redefine the same declarations.\n"
   | .refine =>
     "# Refine\n\nWrite candidate/plan.json. Fresh children are arrays of clause indices from claims.json; they must be nonempty, disjoint and cover the parent. Existing nodes use {\"reuse\": nodeId}. Example for the full root:\n\n```json\n{\"children\":[[0,1,2],[3,4,5]],\"direct\":false}\n```\n\nOptionally set \"implementation\" to a child SLOT (0-based, not a node ID) when combining different implementations. All proofs are rechecked against that chosen implementation. Without it, child implementations must have identical content.\n\nWrite candidate/Refinement.lean:\n\n```lean\nimport Plan\nnamespace Refinement\ntheorem valid (facts : Nat → Prop) :\n    (∀ child ∈ Plan.children, Holds child facts) → Holds Plan.parent facts := by\n  simp_all [Plan.children, Plan.parent, Holds, and_assoc]\nend Refinement\n```\n\nThe controller generates Plan and Holds from the sealed plan and current parent. You cannot replace those inputs. Submit once. To restore direct implementation while leaving the goal open, use {\"direct\":true}. For an already admitted historical product use {\"result\":{\"node\":nodeId,\"receipt\":\"receipt hash\"}}; it must match this exact goal. Search the snapshot history for available nodes and receipts.\n"
   | .explore =>
     "# Explore\n\nWrite candidate/exploration.json:\n\n```json\n{\"question\":\"What uncertainty blocks this goal?\",\"maxRuns\":2,\"stopWhen\":\"Compare at most two candidates, then report a next step\"}\n```\n\nCall prepare before any experiment. maxRuns is 0..8; zero permits analysis without project execution. R0 permits only the registered checker applied to immutable candidates. Write Queue.lean and Proofs.lean under trials/<name>/; experiment accepts that simple name, never arbitrary commands. Each call consumes one admitted run. A lost response is not permission to run again: retry the SAME request ID for status, or ask the user to reconcile the outstanding operation.\n\nUse evidence to inspect raw observations. External research and reasoning may inform your report, but citations and interpretations are not machine facts. Finish candidate/report.md with observations, interpretation and next-step recommendation kept distinct, then call conclude. No findings is also a valid conclusion. All in-flight operations must first be reconciled. Neither a passing trial nor a report closes this product goal.\n"
   | .requestDecision =>
-    "# Request a user decision\n\nWrite candidate/question.json:\n\n```json\n{\"prompt\":\"Which implementation approach should be tried?\",\"subject\":\"Current FIFO goal; this records a preference only\",\"options\":[{\"key\":\"list\",\"label\":\"Use an immutable list\"},{\"key\":\"explore\",\"label\":\"Compare alternatives first\"}]}\n```\n\nUse a short concrete question, a specific subject and 1..4 distinct choices. All branches only record a preference bound to the current scope. They do not change the root, authorize arbitrary actions or prove code. Call submit to register, then ask_user to reach the user through the independent channel. Never supply an answer or invoke the admin CLI yourself. After receiving a durable answer, read its scope and applicableNow in handoff, then call next. Every new package receives the necessary decisions again. Stale and off-branch replies remain historical input only.\n"
+    "# Request a user decision\n\nWrite candidate/question.json:\n\n```json\n{\"prompt\":\"Which implementation approach should be tried?\",\"subject\":\"Current FIFO goal; this records a preference only\",\"options\":[{\"key\":\"list\",\"label\":\"Use an immutable list\"},{\"key\":\"explore\",\"label\":\"Compare alternatives first\"}]}\n```\n\nUse a short concrete question, a specific subject and 1..4 distinct choices. All branches only record a preference bound to the current scope. They do not change the root, authorize arbitrary actions or prove code. Call submit to register, then ask_user to reach the user through the independent channel. Never supply an answer or invoke the admin CLI yourself. After receiving a durable answer, read its scope and applicableNow in handoff, then continue in a new session. Every new package receives the necessary decisions again. Stale and off-branch replies remain historical input only.\n"
 
 def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : String) (node serial : Nat)
     (includeEvidence : Bool := false) : IO Json := do
   let some p := allocated loaded.state node serial | throw (IO.userError "unknown package")
   unless p.owner == owner do throw (IO.userError "wrong worker")
+  unless sessionPackage loaded.state owner == some (node, serial) do
+    throw (IO.userError "workspace is bound to another package; create a new session")
   let directory := viewDirectory root node serial
   let candidate := directory / "candidate"
   IO.FS.createDirAll candidate
@@ -449,6 +427,7 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
     ("guide", toJson (directory / "ACTION.md").toString),
     ("goal", toJson (directory / "Goal.lean").toString),
     ("phase", toJson currentPhase),
+    ("requiresNewSession", toJson (currentPhase == "ended" && !complete loaded.state)),
     ("candidateDirectory", toJson candidate.toString),
     ("resources", toJson (catalog.map (fun r => Json.mkObj [("id", toJson r.id), ("description", toJson r.description)]))),
     ("status", status loaded),
@@ -456,13 +435,14 @@ def exportViewLoaded (repo root : FilePath) (loaded : Git.Loaded) (owner : Strin
   IO.FS.writeFile (directory / "view.json") summary.pretty
   IO.FS.writeFile (directory / "ACTION.md") (actionGuide p.action)
   IO.FS.writeFile (directory / "WORK.md")
-    s!"# Package {node}/{serial}\n\nAction: {repr p.action}. Edit candidate/ only.\n\nRead view.json handoff for decisions, prior outcomes and outstanding operations. Its currentHead is current state; snapshot is the fixed input version. Use Axiward tools for project state and additional materials. Never access the canonical repository, controller binary/configuration, or other packages directly. External research is allowed; your notes are not machine evidence. No package expiry.\n\nexecute: Queue.lean + Proofs.lean. refine: plan.json + Refinement.lean. explore: exploration.json, prepare, experiment, report.md, conclude. requestDecision: question.json, submit, ask_user; never fabricate an answer.\n\nA sealed candidate cannot be edited and resubmitted. After rejection acquire a new package. Use resume to finish an interrupted check. Follow next after an ended package.\n"
+    s!"# Package {node}/{serial}\n\nAction: {repr p.action}. Edit candidate/ only.\n\nRead view.json handoff for decisions, prior outcomes and outstanding operations. Its currentHead is current state; snapshot is the fixed input version. Use Axiward tools for project state and additional materials. Never access the canonical repository, controller binary/configuration, or other packages directly. External research is allowed; your notes are not machine evidence. No package expiry.\n\nexecute: Queue.lean + Proofs.lean. refine: plan.json + Refinement.lean. explore: exploration.json, prepare, experiment, report.md, conclude. requestDecision: question.json, submit, ask_user; never fabricate an answer.\n\nA sealed candidate cannot be edited and resubmitted. After rejection acquire a new package in a new session. Use resume to finish an interrupted check. This workspace stays bound to this package after it ends; next returns requiresNewSession when more work remains.\n"
   return summary
 
 def exportView (repo root : FilePath) (owner : String) (node serial : Nat) : IO Json := do
   exportViewLoaded repo root (← Git.load repo) owner node serial true
 
-def next (repo root : FilePath) (id owner : String) (selection : Option (Nat × Action) := none) : IO Json := do
+private def nextUnlocked (repo root : FilePath) (id owner : String) (selection : Option (Nat × Action)) : IO Json := do
+  Git.synchronize repo
   let _ ← Controller.propagate repo
   let loaded ← Git.load repo
   if let some entry := loaded.state.journal.entries.find? (fun e => e.request.id == id) then
@@ -471,24 +451,26 @@ def next (repo root : FilePath) (id owner : String) (selection : Option (Nat × 
       throw (IO.userError "request ID conflict")
     let .acquired serial := entry.reply | throw (IO.userError "invalid allocation reply")
     return ← exportViewLoaded repo root loaded owner entry.request.node serial
-  if selection.isNone then
-    for (n, node) in loaded.state.nodes.toList.zipIdx do
-      if let some p := n.domain.active then
-        if p.owner == owner then return ← exportViewLoaded repo root loaded owner node p.serial
+  if let some (node, serial) := sessionPackage loaded.state owner then
+    let some p := allocated loaded.state node serial | throw (IO.userError "unknown package")
+    unless selection.all (fun choice => choice == (node, p.action)) do
+      throw (IO.userError "workspace already belongs to another package; use a new session for new work")
+    return ← exportViewLoaded repo root loaded owner node serial true
   if complete loaded.state || loaded.state.domain.workflow.paused then
     return workerStatus loaded
-  let choice := selection.orElse fun _ => Id.run do
-    let mut best : Option (Nat × Action × Nat) := none
-    for node in (currentNodes loaded.state.nodes).reverse do
-      if let some n := loaded.state.nodes[node]? then
-        for r in recommendations loaded.state node n do
-          if r.allowed && best.all (fun b => r.score > b.2.2) then best := some (node, r.action, r.score)
-    return best.map (fun b => (b.1, b.2.1))
-  let some (node, action) := choice | return Json.mkObj [("waiting", toJson true),
-    ("status", status loaded), ("handoff", handoff loaded)]
+  let some (node, action) := selection
+    | throw (IO.userError "choose a node and action from status and handoff before requesting a new package")
   let reply ← Git.transact repo ⟨id, .controller, .begin owner action, node⟩
   let .acquired serial := reply | throw (IO.userError "allocation failed")
   exportView repo root owner node serial
+
+def next (repo root : FilePath) (id owner : String) (selection : Option (Nat × Action) := none) : IO Json := do
+  -- Two concurrent next calls from one session must not bind different nodes
+  -- to the same fixed native sandbox directory.
+  let gate ← IO.FS.Handle.mk (root / ".codex" / "allocation.lock") .append
+  gate.lock
+  try nextUnlocked repo root id owner selection
+  finally gate.unlock
 
 def search (repo : FilePath) (owner : String) (node serial : Nat) (query : String) : IO Json := do
   let loaded ← Git.load repo
@@ -546,10 +528,16 @@ def session (repo view python adapter : FilePath) : IO Json := do
   unless view.isAbsolute && python.isAbsolute && adapter.isAbsolute do
     throw (IO.userError "session paths must be absolute")
   if ← view.pathExists then throw (IO.userError "session requires a new view directory")
+  let repo ← IO.FS.realPath repo
   let repoText := repo.normalize.toString.toLower.replace "\\" "/"
   let viewText := view.normalize.toString.toLower.replace "\\" "/"
-  if viewText.startsWith (repoText ++ "/") || repoText.startsWith (viewText ++ "/") || repoText == viewText then
-    throw (IO.userError "repository and worker view must be separate directories")
+  let parentText := (view.parent.getD view).normalize.toString.toLower.replace "\\" "/"
+  unless parentText == repoText ++ "/.view" && view.fileName.isSome do
+    throw (IO.userError "worker workspace must be a new direct child of the project's .view directory")
+  IO.FS.createDirAll (repo / ".view")
+  let viewRoot ← IO.FS.realPath (repo / ".view")
+  unless viewRoot.normalize.toString.toLower.replace "\\" "/" == parentText do
+    throw (IO.userError ".view must not redirect outside its project")
   unless (← python.pathExists) && (← adapter.pathExists) do throw (IO.userError "Python or adapter not found")
   let exe ← IO.appPath
   for privatePath in [Sandbox.workRoot repo, exe.parent.getD exe, adapter.parent.getD adapter] do
@@ -594,9 +582,9 @@ def session (repo view python adapter : FilePath) : IO Json := do
     s!"[mcp_servers.axiward]\ncommand = {(toJson python.toString).compress}\nargs = {(toJson argv).compress}\nstartup_timeout_sec = 30\ntool_timeout_sec = 600\ndefault_tools_approval_mode = \"approve\"\n" ++ otherServers
   IO.FS.writeFile (view / ".codex" / "config.toml") config
   IO.FS.writeFile (view / "AGENTS.md")
-    "# Axiward worker\n\nUse the Axiward MCP tools for project state. Start with status and next, then read the complete handoff and assigned ACTION.md. Editable package files live under work/packages/; temporary external research files belong in tmp/. This view's unique native Axiward profile denies direct access to the canonical repository and protected controller. The thin adapter provides only permitted views and operations. Do not change permissions or invoke admin commands. External research remains available through native shell/network/web search; unrelated privileged MCP/browser/computer surfaces are disabled for this view.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package call next. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. A new worker may use a separate view/identity for every new package. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over. Never self-approve user questions. Completion requires status.complete=true.\n"
+    "# Axiward worker\n\nUse the Axiward MCP tools for project state. First read status and its complete handoff, choose a node and one of the four actions, then call next with explicit node and action. Read the returned handoff and ACTION.md. In an already bound workspace, next without a choice recovers the same package. This workspace binds to its first package. Editable package files live under work/; temporary external research files belong in tmp/. This view's unique native Axiward profile denies direct access to the canonical repository and protected controller. The thin adapter provides only permitted views and operations. Do not change permissions or invoke admin commands. External research remains available through native shell/network/web search; unrelated privileged MCP/browser/computer surfaces are disabled for this view.\n\nFollow the assigned action. execute: implementation + proof, submit once. refine: plan.json + Refinement.lean, submit. explore: exploration.json, prepare, experiments as needed, report.md, conclude. requestDecision: question.json, submit, ask_user, read the scoped decision in handoff. After an ended package, new work requires a new session in another .view/ workspace. Resume sealed checks after interruption; never blindly replay a pending experiment. Keep request IDs stable on retries.\n\nUse one active native task per view. Every new package uses a separate workspace and session identity; reusing worker conversation context does not reuse its filesystem access. Each status and package view supplies complete handoff without prior memory. Recover an existing active package through its owning view; another identity cannot take it over. Never self-approve user questions. Completion requires status.complete=true.\n"
   IO.FS.writeFile (view / "START.md")
-    "# Start here\n\nOpen this directory as a trusted Codex project. Confirm the Axiward MCP tools are available. Ask the agent: ‘Use Axiward to advance this project; follow next, ask me when a registered decision needs an answer, and continue until complete.’\n\nOnly this project uses the generated configuration. Restart the task after setup. New packages may use new worker views and identities. To recover an existing active package, reopen its owning view and read the complete handoff; prior conversation context is unnecessary. Packages never expire.\n"
+    "# Start here\n\nOpen this directory as a trusted Codex project. Confirm the Axiward MCP tools are available. Ask the agent: ‘Read status and handoff, choose a node and action, pass both to next, and work through that package. Ask me when a registered decision needs an answer.’\n\nOnly this project uses the generated configuration. Restart the task after setup. This initially empty workspace binds to one package on its first allocation. Start each new package with another session under the project .view/ directory. To recover an existing active package, reopen its owning view and call next without a new choice; prior conversation context is unnecessary. Packages never expire.\n"
   return Json.mkObj [("view", toJson view.toString), ("worker", toJson worker),
     ("configuration", toJson (view / ".codex" / "config.toml").toString),
     ("message", toJson "Open this view as a trusted Codex project; no global configuration changed.")]

@@ -28,7 +28,8 @@ def main():
     exe = source / ".lake/build/bin/axiward.exe"
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
-    repo, view = output / "project.git", output / "worker"
+    repo = output / "project"
+    view = repo / ".view" / "worker"
     commands = []
 
     def write(name, value):
@@ -48,15 +49,16 @@ def main():
         # No writer runs while these independent reference reads are collected.
         value = cli("worker-status", repo, worker)
         assert value["status"] == cli("overview", repo)
-        assert value["navigation"] == cli("navigate", repo)
         assert value["handoff"]["currentHead"] == value["status"]["head"]
         assert cli("overview", repo)["head"] == value["status"]["head"]
         return value
 
     cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
     worker = cli("session", repo, view, Path(sys.executable), source / "adapter/server.py")["worker"]
-    other = cli("session", repo, output / "other-worker", Path(sys.executable),
+    other = cli("session", repo, repo / ".view" / "other-worker", Path(sys.executable),
                 source / "adapter/server.py")["worker"]
+    writer = cli("session", repo, repo / ".view" / "writer", Path(sys.executable),
+                 source / "adapter/server.py")["worker"]
     question = output / "question"
     question.mkdir()
     (question / "question.json").write_text(json.dumps({
@@ -72,7 +74,6 @@ def main():
     before = components(worker)
     assert [item["sourceOwner"] for item in before["handoff"]["decisions"]] == [worker, other]
     assert all(item["applicableNow"] for item in before["handoff"]["decisions"])
-    assert any(r["allowed"] for item in before["navigation"] for r in item["recommendations"])
     with (output / "mcp-events.jsonl").open("w", encoding="utf-8") as events:
         client = Client(source, exe, repo, view, worker, events)
         try:
@@ -97,15 +98,15 @@ def main():
         return value
 
     # Hold the first real controller result before Adapter.call can finish.
-    # A split implementation would read navigation/handoff after the
+    # A split implementation would read handoff after the
     # commits below, despite reporting the earlier overview head.
     adapter.cli = read_then_wait
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending = pool.submit(adapter.call, "status", {}, "race")
         try:
             assert read_finished.wait(timeout=60), "status did not finish its first read"
-            cli("begin", repo, "race-question", other, 0, "requestDecision")
-            cli("submit", repo, "race-submit", other, 2, question)
+            cli("begin", repo, "race-question", writer, 0, "requestDecision")
+            cli("submit", repo, "race-submit", writer, 2, question)
             cli("check", repo, "race-check", 2)
             cli("decide", repo, "race-answer", 0, 2, "list", "new simulated decision")
             cli("pause", repo, "race-pause", "status snapshot fixture")
@@ -117,10 +118,9 @@ def main():
     write("race.json", {"before": before, "returned": actual, "after": after})
     assert before["status"]["head"] != after["status"]["head"], "writer made no commit"
     assert after["status"]["paused"] and len(after["handoff"]["decisions"]) == 3
-    assert not any(r["allowed"] for item in after["navigation"] for r in item["recommendations"])
     assert components(other)["handoff"] == after["handoff"], "handoff depends on worker identity"
     assert actual["status"]["head"] == before["status"]["head"]
-    for section in ("status", "navigation", "handoff"):
+    for section in ("status", "handoff"):
         assert actual[section] == before[section], f"{section} differs from the returned head's snapshot"
     assert adapter.call("status", {}, "after") == after
     result = {"status": "passed", "seconds": round(time.monotonic() - started, 3),
@@ -128,7 +128,7 @@ def main():
               "checks": ["MCP response shape and protected worker binding",
                          "status repeats all relevant decisions across worker identities without writes",
                          "concurrent commits complete before status returns",
-                         "all three response sections match the returned head",
+                         "both response sections match the returned head",
                          "later status observes pause and newly recorded user decision"]}
     write("results.json", result)
     print(json.dumps(result), flush=True)

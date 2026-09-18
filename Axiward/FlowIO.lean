@@ -44,6 +44,7 @@ def startExperiment (repo : FilePath) (id owner : String) (node serial : Nat) (d
       e.request.node == node && e.reply == .acquired serial)
     unless original.any (fun e => e.request.command == .begin owner .explore) do
       throw (IO.userError "wrong worker/package")
+    Git.synchronize repo
     return Json.mkObj [("replayed", toJson true), ("operation", toJson
       (target.domain.workflow.operations.find? (fun op => op.id == id)))]
   let some p := target.domain.active | throw (IO.userError "no active package")

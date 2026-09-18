@@ -11,7 +11,7 @@ from records import PROJECT, save
 parser = argparse.ArgumentParser()
 parser.add_argument("--repo", type=Path, required=True)
 args = parser.parse_args()
-root = PROJECT / ".work" / ("configuration-guard-" + str(time.time_ns()))
+root = args.repo.resolve() / ".view" / ("configuration-guard-" + str(time.time_ns()))
 exe = PROJECT / ".lake/build/bin/axiward.exe"
 adapter = PROJECT / "adapter/server.py"
 run = subprocess.run([str(exe), "session", str(args.repo.resolve()), str(root), sys.executable, str(adapter)],

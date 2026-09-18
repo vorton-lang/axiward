@@ -52,17 +52,20 @@ def protocolCases : IO Unit := do
 def main (args : List String) : IO UInt32 := do
   try
     protocolCases
-    let [path] := args | throw (IO.userError "store_scenarios <new-absolute-bare-repository>")
+    let [path] := args | throw (IO.userError "store_scenarios <new-absolute-project-directory>")
     let repo : FilePath := path
     Git.initRepository repo
     let spec ← Git.hashText repo "-- storage fixture, not a proof certificate\n"
     let policy ← Git.tree repo none #[⟨"Axiward/Spec.lean", spec⟩]
     Git.create repo ⟨0, spec, policy, []⟩
+    require ((← IO.FS.readFile (repo / ".gitignore")) == "/.view/\n") "worker spaces are not ignored"
     let initial ← Git.load repo
     let marker ← Git.hashText repo "preserve this unrelated source file\n"
     let seeded ← Git.tree repo (some initial.head) #[⟨"existing.txt", marker⟩]
     let seededCommit ← Git.commitTree repo seeded (some initial.head) "test fixture\n"
     require (← Git.compareAndSwap repo (some initial.head) seededCommit) "seed failed"
+    require ((← IO.FS.readFile (repo / "existing.txt")) == "preserve this unrelated source file\n")
+      "authoritative source was not checked out"
     let a ← Git.load repo
     let b ← Git.load repo
     let request : Request := ⟨"begin", .controller, .begin "worker-a" .execute, 0⟩

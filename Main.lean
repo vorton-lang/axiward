@@ -21,11 +21,12 @@ def send (repo : String) (id : String) (actor : Actor) (command : Axiward.Comman
     (node : Nat) : IO Unit := do
   emit (toJson (← Git.transact repo ⟨id, actor, command, node⟩))
 
-def usage : String := "axiward init <absolute-bare-repo> <trusted-policy-dir> <lean-toolchain>\n\
-  axiward session <repo> <new-worker-view> <python.exe> <adapter/server.py>\n\
-  axiward overview <repo> | navigate <repo>\n\
+def usage : String := "axiward init <new-absolute-project-directory> <trusted-policy-dir> <lean-toolchain>\n\
+  axiward session <repo> <repo/.view/new-package-space> <python.exe> <adapter/server.py>\n\
+  axiward overview <repo>\n\
   axiward worker-status <repo> <worker-id>\n\
-  axiward next <repo> <request-id> <worker-id> <view> [node action]\n\
+  axiward next <repo> <request-id> <worker-id> <view> <node> <action>\n\
+  axiward next <repo> <request-id> <worker-id> <view> (resume bound package only)\n\
   axiward search <repo> <worker-id> <node> <serial> <query>\n\
   axiward view-add <repo> <worker-id> <view> <node> <serial> <resource-id>\n\
   axiward decide <repo> <request-id> <node> <serial> <choice> <comment> (user-only)\n\
@@ -88,6 +89,7 @@ def main (args : List String) : IO UInt32 := do
         IO.eprintln s!"Parent propagation pending: {error}"
         pure []
       unless parents.isEmpty do IO.eprintln s!"Composed parent nodes: {parents}"
+      Git.synchronize repo
       emit (toJson reply)
     | ["compose", repo, node] => emit (toJson (← Controller.compose repo (← serialOf node)))
     | ["compose", repo, node, id] => emit (toJson (← Controller.compose repo (← serialOf node) (some id)))
@@ -102,7 +104,6 @@ def main (args : List String) : IO UInt32 := do
       emit (← Interface.packageInfo repo owner (← serialOf node) (← serialOf serial))
     | ["package-view", repo, owner, view, node, serial] =>
       emit (← Interface.exportView repo view owner (← serialOf node) (← serialOf serial))
-    | ["navigate", repo] => emit (Interface.navigation (← Git.load repo).state)
     | ["next", repo, id, owner, view] => emit (← Interface.next repo view id owner)
     | ["next", repo, id, owner, view, node, action] =>
       emit (← Interface.next repo view id owner (some (← serialOf node, ← actionOf action)))

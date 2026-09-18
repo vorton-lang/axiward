@@ -30,7 +30,8 @@ def main():
     exe = source / ".lake/build/bin/axiward.exe"
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
-    repo, view = root / "project.git", root / "view"
+    repo = root / "project.git"
+    view = repo / ".view" / "question"
 
     def cli(*args):
         run = subprocess.run([str(exe), *map(str, args)], capture_output=True, text=True,
@@ -131,10 +132,13 @@ def main():
         (checker / "private.txt").write_text("private-checker-input", encoding="utf-8")
         external = root / "external.txt"
         external.write_text("external research remains readable", encoding="utf-8")
+        sibling = repo / ".view" / "other-package"
+        sibling.mkdir()
+        (sibling / "private.txt").write_text("another package's draft", encoding="utf-8")
         probe = """import json,sys
 from pathlib import Path
 view,repo,exe,adapter,checker,external=map(Path,sys.argv[1:]); result={}
-for name,path,write in [('work-write',view/'work'/'ok.txt',True),('config-write',view/'.codex'/'config.toml',True),('repo-read',repo/'HEAD',False),('repo-write',repo/'forged.txt',True),('controller-read',exe,False),('adapter-read',adapter,False),('checker-read',checker/'private.txt',False),('external-read',external,False)]:
+for name,path,write in [('work-write',view/'work'/'ok.txt',True),('config-write',view/'.codex'/'config.toml',True),('repo-read',repo/'.git'/'HEAD',False),('state-read',repo/'.axiward'/'state.json',False),('sibling-read',repo/'.view'/'other-package'/'private.txt',False),('repo-write',repo/'forged.txt',True),('controller-read',exe,False),('adapter-read',adapter,False),('checker-read',checker/'private.txt',False),('external-read',external,False)]:
  try:
   if write: path.write_text('untrusted write',encoding='utf-8')
   else: path.read_bytes()
@@ -147,6 +151,7 @@ print(json.dumps(result))
         assert access["exitCode"] == 0, access
         access_result = json.loads(access["stdout"])
         assert access_result == {"work-write":"allowed", "config-write":"denied", "repo-read":"denied",
+                                 "state-read":"denied", "sibling-read":"denied",
                                  "repo-write":"denied", "controller-read":"denied", "adapter-read":"denied",
                                  "checker-read":"denied", "external-read":"allowed"}, access_result
         copied = view / "work/copied-controller.exe"

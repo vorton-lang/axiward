@@ -151,7 +151,7 @@ def main():
         project = output / name
         repo = project / "project.git"
         snapshot = project / "project.git.checks" / "run-probe" / "snapshot"
-        repo.mkdir(parents=True)
+        (repo / ".git").mkdir(parents=True)
         (repo / "PRIVATE.txt").write_text("probe sentinel", encoding="utf-8")
         for directory in (".lake", ".tmp"):
             (snapshot / directory).mkdir(parents=True)

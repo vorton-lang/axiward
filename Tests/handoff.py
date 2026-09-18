@@ -44,11 +44,11 @@ def main():
         return json.loads(run([exe, *argv], success=success))
 
     def git(*argv, **kwargs):
-        return run(["git", f"--git-dir={repo}", "-c", "user.name=Axiward tests",
+        return run(["git", f"--git-dir={repo / '.git'}", f"--work-tree={repo}", "-c", "user.name=Axiward tests",
                     "-c", "user.email=tests@localhost", *argv], **kwargs)
 
     cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
-    views = [output / "worker-a", output / "worker-b"]
+    views = [repo / ".view" / "worker-a", repo / ".view" / "worker-b"]
     owners = [cli("session", repo, view, sys.executable, source / "adapter/server.py")["worker"] for view in views]
     question = output / "question"
     question.mkdir()
@@ -73,6 +73,7 @@ def main():
     tree = git("write-tree", env=index_env)
     commit = git("commit-tree", tree, "-p", prior, data=f"Axiward transition {len(journal['entries'])}\n")
     git("update-ref", "refs/heads/main", commit, prior)
+    git("read-tree", "-m", "-u", prior, commit)
     restored = cli("status", repo)
     assert "acknowledged" not in restored["state"]["workflow"]["decisions"][0]
     assert json.loads(git("show", "main:.axiward/state.json")) == journal
@@ -81,6 +82,11 @@ def main():
     checks.append("legacy acknowledge journal replays unchanged without an acknowledged field or worker entry point")
 
     with (output / "mcp-events.jsonl").open("w", encoding="utf-8") as events:
+        def fresh(name):
+            view = repo / ".view" / name
+            owner = cli("session", repo, view, sys.executable, source / "adapter/server.py")["worker"]
+            return Client(source, exe, repo, view, owner, events)
+
         a = Client(source, exe, repo, views[0], owners[0], events)
         b = Client(source, exe, repo, views[1], owners[1], events)
         try:
@@ -117,6 +123,11 @@ def main():
             assert cli("overview", repo)["head"] == pending_head
             assert len(cli("status", repo)["state"]["workflow"]["operations"]) == 1
             b.call("cancel", request_id="end", node=0, serial=1, reason="leave the operation for reconciliation")
+            ended = a.call("next", request_id="old-workspace")
+            assert ended["serial"] == 0 and ended["requiresNewSession"]
+            a.call("next", success=False, request_id="cannot-rebind", node=0, action="execute")
+            a.close()
+            a = fresh("followup")
             assigned = a.call("next", request_id="followup", node=0, action="execute")
             frozen_spec = (Path(assigned["candidateDirectory"]).parent / "Spec.lean").read_bytes()
             assert assigned["handoff"]["operations"][0]["operation"]["result"] is None
@@ -150,6 +161,8 @@ def main():
             assert a.call("search", node=0, serial=2, query="durable preference marker") == []
             cli("access", repo, "allow-history", "node/0/history", "allow")
             a.call("cancel", request_id="end-stale", node=0, serial=2, reason="stale input")
+            b.close()
+            b = fresh("off-branch")
             q = b.call("next", request_id="off-branch", node=0, action="requestDecision")
             (Path(q["candidateDirectory"]) / "question.json").write_bytes((question / "question.json").read_bytes())
             b.call("submit", request_id="off-submit", node=0, serial=3)
@@ -159,10 +172,14 @@ def main():
             assert final["status"]["head"] == final["handoff"]["currentHead"]
             assert final["phase"] == "ended"
             checks.append("permissions block missing context explicitly, current aliases obey denials, and off-branch answers stay historical")
+            b.close()
+            b = fresh("invalid-question")
             invalid = b.call("next", request_id="invalid-question", node=0, action="requestDecision")
             (Path(invalid["candidateDirectory"]) / "question.json").write_text('{"prompt":"missing branches"}', encoding="utf-8")
             rejected = b.call("submit", request_id="invalid-submit", node=0, serial=4)["result"]
             assert "rejected" in rejected and rejected["rejected"]["reason"]
+            a.close()
+            a = fresh("after-failure")
             followup = a.call("next", request_id="after-failure", node=0, action="execute")
             attempt = next(x for x in followup["handoff"]["attempts"] if x.get("serial") == 4)
             assert attempt["action"] == "requestDecision"

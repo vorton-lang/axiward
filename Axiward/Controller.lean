@@ -24,6 +24,7 @@ def recordedCheck (repo : FilePath) (id : String) (node serial : Nat) : IO (Opti
     | .archive ticket _ _
     | .workflow (.prepare ticket _) | .workflow (.ask ticket _) | .workflow (.reject ticket _) =>
       unless ticket == serial do throw (IO.userError "request ID conflict")
+      Git.synchronize repo
       return some entry.reply
     | _ => throw (IO.userError "request ID conflict")
   return none
@@ -97,6 +98,7 @@ def compose (repo : FilePath) (node : Nat) (requestId : Option String := none) :
   if let some entry := loaded.state.journal.entries.find? (fun e => e.request.id == id) then
     unless matchesComposition entry node target.domain.scope route children do
       throw (IO.userError "request ID conflict")
+    Git.synchronize repo
     return entry.reply
   unless target.domain.active.isNone && target.domain.published.isNone do
     throw (IO.userError "parent is occupied or already closed")
@@ -117,6 +119,7 @@ def compose (repo : FilePath) (node : Nat) (requestId : Option String := none) :
     let current ← Git.load repo
     if let some entry := current.state.journal.entries.find? (fun e => e.request.id == id) then
       unless matchesComposition entry node target.domain.scope route children do throw error
+      Git.synchronize repo
       return entry.reply
     throw error
 

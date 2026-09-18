@@ -80,8 +80,8 @@ def main():
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=False)
     repo = output / "project.git"
-    view = output / "worker-a"
-    view2 = output / "worker-b"
+    view = repo / ".view" / "worker-a"
+    view2 = repo / ".view" / "worker-b"
     commands = []
     passed = []
 
@@ -163,6 +163,10 @@ def main():
         client.call("conclude", request_id="report", node=0, serial=0)
         ok("native experiments: raw results, two-run budget, replay prevention, observations never publish")
 
+        client.close()
+        view = repo / ".view" / "question"
+        session = cli("session", repo, view, Path(sys.executable), source / "adapter/server.py")
+        client = Client(source, exe, repo, view, session["worker"], events)
         pkg = client.call("next", request_id="question", node=0, action="requestDecision")
         directory = Path(pkg["candidateDirectory"])
         write(directory / "question.json", {"prompt": "Which implementation should the next package use?",
@@ -190,11 +194,19 @@ def main():
         cli("resume", repo, "resume-user")
         ok("user-only elicitation survives pause and lost context; another identity receives the complete decision")
 
+        client.close()
+        route_view = repo / ".view" / "route"
+        route_session = cli("session", repo, route_view, Path(sys.executable), source / "adapter/server.py")
+        client = Client(source, exe, repo, route_view, route_session["worker"], events)
         pkg = client.call("next", request_id="route", node=0, action="refine")
         directory = Path(pkg["candidateDirectory"])
         for path in (source / "examples/fifo/refinement").iterdir():
             shutil.copyfile(path, directory / path.name)
         client.call("submit", request_id="route-submit", node=0, serial=2)
+        client.close()
+        left_view = repo / ".view" / "left"
+        left_session = cli("session", repo, left_view, Path(sys.executable), source / "adapter/server.py")
+        client = Client(source, exe, repo, left_view, left_session["worker"], events)
         left = client.call("next", request_id="left", node=1, action="execute")
         right = second.call("next", request_id="right", node=2, action="execute")
         assert right["handoff"]["decisions"][0]["applicableNow"]

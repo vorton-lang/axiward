@@ -76,7 +76,7 @@ def runVerifier (repo snapshot toolRoot : FilePath) (arguments : Array String)
     "\nexit $LASTEXITCODE\n} catch {\n[Console]::Error.WriteLine($_.Exception.Message)\nexit 1\n}\n"
   -- Preserve per-project verifier coordination; the shared gate above only
   -- serializes startup, so distinct projects can execute their checks together.
-  let gate ← IO.FS.Handle.mk (repo / "axiward-verifier.lock") .append
+  let gate ← IO.FS.Handle.mk (repo / ".git" / "axiward-verifier.lock") .append
   gate.lock
   try
     nativeOutput {

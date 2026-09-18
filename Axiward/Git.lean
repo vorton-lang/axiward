@@ -12,6 +12,8 @@ def decode {α : Type} (value : Except String α) : IO α :=
 def objectId (value : String) : Bool :=
   value.length == 64 && value.toList.all (fun c => c.isDigit || ('a' ≤ c && c ≤ 'f'))
 
+def gitDirectory (repo : FilePath) : FilePath := repo / ".git"
+
 def cleanEnv : Array (String × Option String) :=
   #["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE",
     "GIT_OBJECT_DIRECTORY", "GIT_ALTERNATE_OBJECT_DIRECTORIES", "GIT_NAMESPACE",
@@ -23,12 +25,13 @@ def call (repo : FilePath) (args : Array String) (input : Option String := none)
     (index : Option FilePath := none) : IO IO.Process.Output := do
   IO.Process.output {
     cmd := "git"
-    args := #["--no-replace-objects", "--literal-pathspecs", s!"--git-dir={repo}",
-      "-c", s!"core.hooksPath={repo / "axiward-no-hooks"}",
+    args := #["--no-replace-objects", "--literal-pathspecs", s!"--git-dir={gitDirectory repo}",
+      s!"--work-tree={repo}", "-c", s!"core.hooksPath={gitDirectory repo / "axiward-no-hooks"}",
       "-c", "user.name=Axiward", "-c", "user.email=axiward@localhost",
       "-c", "commit.gpgsign=false", "-c", "core.autocrlf=false",
       "-c", "core.fsync=committed"] ++ args
     env := cleanEnv ++ index.toArray.map (fun p => ("GIT_INDEX_FILE", some p.toString))
+    cwd := some repo
   } input
 
 def checked (repo : FilePath) (args : Array String) (input : Option String := none)
@@ -40,8 +43,10 @@ def checked (repo : FilePath) (args : Array String) (input : Option String := no
 
 def checkRepository (repo : FilePath) : IO Unit := do
   unless repo.isAbsolute do throw (IO.userError "repository path must be absolute")
-  unless (← checked repo #["rev-parse", "--is-bare-repository"]) == "true" do
-    throw (IO.userError "managed repository must be bare")
+  unless (← checked repo #["rev-parse", "--is-bare-repository"]) == "false" do
+    throw (IO.userError "managed project must be a normal checkout with its own .git directory")
+  unless (← checked repo #["symbolic-ref", "HEAD"]) == "refs/heads/main" do
+    throw (IO.userError "managed checkout must remain on main")
   unless (← checked repo #["rev-parse", "--show-object-format"]) == "sha256" do
     throw (IO.userError "managed repository must use SHA-256")
 
@@ -50,7 +55,7 @@ def initRepository (repo : FilePath) : IO Unit := do
   if ← repo.pathExists then throw (IO.userError "initialization requires a new directory")
   let result ← IO.Process.output {
     cmd := "git"
-    args := #["init", "--bare", "--object-format=sha256", "--initial-branch=main", repo.toString]
+    args := #["init", "--object-format=sha256", "--initial-branch=main", repo.toString]
     env := cleanEnv }
   unless result.exitCode == 0 do throw (IO.userError result.stderr)
   checkRepository repo
@@ -68,7 +73,7 @@ def readBlob (repo : FilePath) (oid : String) : IO String := do
   return result.stdout
 
 def scratch (repo : FilePath) : IO FilePath := do
-  let parent := repo / "axiward-work"
+  let parent := gitDirectory repo / "axiward-work"
   IO.FS.createDirAll parent
   let path := parent / s!"run-{← IO.monoNanosNow}-{← IO.rand 0 1000000000}"
   IO.FS.createDir path
@@ -116,14 +121,71 @@ def commitTree (repo : FilePath) (tree : String) (parent : Option String)
   checked repo (#["commit-tree", tree] ++
     (parent.toArray.flatMap (fun oid => #["-p", oid]))) (some message)
 
-def compareAndSwap (repo : FilePath) (expected : Option String) (commit : String) : IO Bool := do
-  let output ← call repo #["update-ref", "--no-deref", "refs/heads/main", commit,
-    expected.getD (String.ofList (List.replicate 64 '0'))]
-  if output.exitCode == 0 then return true
+/-- Recovery metadata for projecting an already authoritative commit. It never
+    supplies project state and is removed after the ordinary checkout catches up. -/
+private structure Checkout where
+  before : Option String
+  after : String
+  deriving ToJson, FromJson
+
+private def checkout (repo : FilePath) (pending : Checkout) (preview : Bool := false) : IO Unit := do
+  let _ ← checked repo (#["read-tree"] ++ (if preview then #["--dry-run"] else #[]) ++
+    #["-m", "-u"] ++ pending.before.toArray ++ #[pending.after])
+  return ()
+
+private def recoverCheckout (repo : FilePath) : IO Unit := do
+  let path := gitDirectory repo / "axiward-checkout.json"
+  unless ← path.pathExists do return ()
+  let pending : Checkout ← decode (fromJson? (← decode (Json.parse (← IO.FS.readFile path))))
+  unless objectId pending.after && pending.before.all objectId do
+    throw (IO.userError "invalid pending checkout record")
   let actual ← call repo #["rev-parse", "--verify", "refs/heads/main"]
-  if actual.exitCode == 0 && some actual.stdout.trimAscii.toString != expected then return false
-  if (output.stderr.splitOn "File exists").length > 1 then return false
-  throw (IO.userError s!"reference update failed: {output.stderr}")
+  let current := if actual.exitCode == 0 then some actual.stdout.trimAscii.toString else none
+  if current == some pending.after then
+    checkout repo pending
+  else if current != pending.before then
+    throw (IO.userError "main changed outside the controller while checkout was pending")
+  IO.FS.removeFile path
+
+private def withCheckoutLock (repo : FilePath) (operation : IO α) : IO α := do
+  let gate ← IO.FS.Handle.mk (gitDirectory repo / "axiward-commit.lock") .append
+  gate.lock
+  try
+    recoverCheckout repo
+    operation
+  finally gate.unlock
+
+/-- Mutating entry points also call this before returning a recorded reply.
+    Read-only load/status deliberately never repair or modify the checkout. -/
+def synchronize (repo : FilePath) : IO Unit := withCheckoutLock repo (pure ())
+
+def compareAndSwap (repo : FilePath) (expected : Option String) (commit : String) : IO Bool :=
+  withCheckoutLock repo do
+    let actual ← call repo #["rev-parse", "--verify", "refs/heads/main"]
+    let current := if actual.exitCode == 0 then some actual.stdout.trimAscii.toString else none
+    unless current == expected do return false
+    let pending : Checkout := ⟨expected, commit⟩
+    -- Two-tree checkout refuses colliding local edits and untracked files;
+    -- never use reset --hard to synchronize a human-readable working tree.
+    checkout repo pending true
+    let path := gitDirectory repo / "axiward-checkout.json"
+    let temporary := gitDirectory repo / "axiward-checkout.tmp"
+    IO.FS.writeFile temporary (toJson pending).compress
+    IO.FS.rename temporary path
+    let output ← call repo #["update-ref", "--no-deref", "refs/heads/main", commit,
+      expected.getD (String.ofList (List.replicate 64 '0'))]
+    if output.exitCode != 0 then
+      IO.FS.removeFile path
+      let actual ← call repo #["rev-parse", "--verify", "refs/heads/main"]
+      if actual.exitCode == 0 && some actual.stdout.trimAscii.toString != expected then return false
+      if (output.stderr.splitOn "File exists").length > 1 then return false
+      throw (IO.userError s!"reference update failed: {output.stderr}")
+    try
+      checkout repo pending
+      IO.FS.removeFile path
+    catch error =>
+      throw (IO.userError s!"commit recorded; checkout is pending, retry the same request after resolving local file conflicts: {error}")
+    return true
 
 structure Loaded where
   head : String
@@ -175,13 +237,14 @@ def create (repo : FilePath) (scope : Scope) : IO Unit := do
   unless validRequirements scope.requirements do throw (IO.userError "invalid requirements")
   let state ← decode (restore { initial := scope })
   let stateBlob ← hashText repo (toJson state.journal).compress
-  let root ← tree repo none #[⟨".axiward/state.json", stateBlob⟩]
+  let ignore ← hashText repo "/.view/\n"
+  let root ← tree repo none #[⟨".axiward/state.json", stateBlob⟩, ⟨".gitignore", ignore⟩]
     #[(".axiward/policy", scope.policy)]
   let commit ← commitTree repo root none "Axiward initialization\n"
   unless ← compareAndSwap repo none commit do throw (IO.userError "project already initialized")
 
 def commitChange (repo : FilePath) (loaded : Loaded) (change : Change loaded.state) : IO Bool := do
-  if !change.changed then return true
+  if !change.changed then return ← withCheckoutLock repo (pure true)
   let stateBlob ← hashText repo (toJson change.after.journal).compress
   let mut blobs : Array Blob := #[⟨".axiward/state.json", stateBlob⟩]
   let mut subtrees : Array (String × String) := #[]

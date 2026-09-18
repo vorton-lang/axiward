@@ -46,7 +46,7 @@ def main():
         return json.loads(command([executable, *argv], success=success, env=env, timeout=timeout))
 
     def git(repo, *argv, data=None, env=None):
-        return command(["git", f"--git-dir={repo}", "-c", "user.name=Axiward tests",
+        return command(["git", f"--git-dir={repo / '.git'}", f"--work-tree={repo}", "-c", "user.name=Axiward tests",
                         "-c", "user.email=tests@localhost", *argv], data=data, env=env).strip()
 
     def init(name):

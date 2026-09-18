@@ -31,7 +31,7 @@ PACKAGE = {"node": NAT, "serial": NAT}
 REQUEST = {"request_id": STRING, **PACKAGE}
 TOOLS = {
     "status": ("Current graph and complete project handoff: scoped decisions, attempts and outstanding work.", schema()),
-    "next": ("Resume your package or allocate the recommended action. Optional node/action selects an eligible alternative.",
+    "next": ("Choose node and action from status and handoff, then request that package. Both are required for new work; omit both only to recover this workspace's existing package. After it ends, create a new session for new work.",
              schema({"request_id": STRING, "node": NAT, "action": {
                  "type": "string", "enum": ["execute", "refine", "explore", "requestDecision"]}}, ["request_id"])),
     "search": ("Search fixed node/ input materials and explicitly current/ handoff records. Access rules apply.", schema({**PACKAGE, "query": STRING})),
@@ -52,10 +52,11 @@ class Adapter:
     def __init__(self, exe, repo, view, worker):
         self.exe, self.repo, self.view = map(lambda p: Path(p).resolve(), (exe, repo, view))
         self.worker = worker
-        if self.repo == self.view or self.repo.is_relative_to(self.view):
-            raise ValueError("canonical repository must be outside the worker view")
-        if self.view.is_relative_to(self.repo):
-            raise ValueError("worker view must not be inside the canonical repository")
+        if self.view.parent != self.repo / ".view":
+            raise ValueError("worker workspace must be a direct child of the project's .view directory")
+        self.git = self.repo / ".git"
+        if not self.git.is_dir():
+            raise ValueError("managed project must have its own .git directory")
         config = tomllib.loads((self.view / ".codex/config.toml").read_text(encoding="utf-8"))
         profile_name = "axiward_" + worker[:16]
         if config.get("default_permissions") != profile_name or "sandbox_mode" in config:
@@ -71,7 +72,7 @@ class Adapter:
             raise ValueError("unreviewed privileged MCP transport in worker configuration")
         self.pending = {}
         self.elicitation = False
-        self.audit = self.repo / "axiward-transport" / (uuid.uuid4().hex + ".jsonl")
+        self.audit = self.git / "axiward-transport" / (uuid.uuid4().hex + ".jsonl")
         self.audit.parent.mkdir(exist_ok=True)
 
     def cli(self, *args):
@@ -93,7 +94,7 @@ class Adapter:
     def package(self, node, serial):
         # Ownership is checked from canonical allocation history, not local files.
         package = self.cli("package-info", self.repo, self.worker, node, serial)
-        directory = (self.view / "work" / "packages" / f"{node}-{serial}").resolve()
+        directory = (self.view / "work").resolve()
         if not directory.is_relative_to(self.view):
             raise ValueError("package view escapes its root")
         return package["domain"], directory
@@ -154,7 +155,7 @@ class Adapter:
             except FileNotFoundError:
                 if not missing_allowed:
                     raise
-        destination = self.repo / "axiward-inbox" / uuid.uuid4().hex
+        destination = self.git / "axiward-inbox" / uuid.uuid4().hex
         destination.mkdir(parents=True)
         for name, content in captured.items():
             (destination / name).write_bytes(content)
@@ -215,7 +216,7 @@ class Adapter:
             if intent["replayed"]:
                 return {**intent, **self.package_view(node, serial)}
             capture = execute([str(self.exe), "run-experiment", str(self.repo), str(node), request_id],
-                              directory, self.repo / "axiward-transport" / uuid.uuid4().hex)
+                              directory, self.git / "axiward-transport" / uuid.uuid4().hex)
             result = self.cli("record-experiment", self.repo, node, request_id, capture)
             return {"result": result, "closesGoal": False, **self.package_view(node, serial)}
         if name == "conclude":
