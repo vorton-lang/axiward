@@ -43,7 +43,7 @@ flowchart TD
 | 被拒绝的核验释放占用，结束后迟到结果不能发布 | T5、T15 | `rejection_releases`、`ended_cannot_publish` |
 | 执行发布必须有匹配版本和候选的通过结果 | G3、T5 | `accepted_binding` |
 | 流程动作不修改命题、不发布产品、也不重分配编号 | G5、T10–T13 | `workflow_preserves`、`workflow_never_publishes` |
-| 模型不能冒充用户答复或 harness 观测 | G1、T10、T13 | `worker_cannot_answer`、`worker_cannot_forge_observation`；身份对应由保护的适配器契约承担 |
+| 标为 worker 的请求不能作为用户答复或 harness 观测 | G1、T10、T13 | `worker_cannot_answer`、`worker_cannot_forge_observation`；身份由调用入口提供，完全访问模式下不证明无法绕行 |
 | 取消保留过程义务，迟到观测不改变活动包 | T10、T15 | `cancel_preserves_obligations`、`late_observation_never_revives` |
 | 暂停禁止新的工作包 | T16 | `pause_blocks_new_package` |
 | 实验发起前必须有登记的准入方案 | T8、T9 | `launch_requires_admitted_plan` |
@@ -142,7 +142,28 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 快照与交接检查删除了重复的完整流程准备；状态组合仍由已有 Lean 纯检查覆盖。Python 功能检查设有整体时间预算，超时会失败，不算通过。原生问答由测试客户端明确模拟，不使用模型轮次。可再生证据在 `.work/cli-layout-checks-20260919-004846/`，不自动清理。
 
-`Tests/integration.py` 历史耗时 1465 秒，`Tests/workflow.py` 为 632–703 秒，主要成本是长链中重复运行实际构建、审计和证明重放。二者已停止常规运行，等待用户审核覆盖取舍：建议保留一个 30 秒内的真实候选接纳与交付场景，重复状态组合交给纯检查，删除其余长串联场景。这会减少真实验证器参与多层组合、规格变更和恢复的端到端覆盖；尚未据此删除或声称完成优化。
+`Tests/integration.py` 历史耗时 1465 秒，`Tests/workflow.py` 为 632–703 秒，主要成本是长链中重复运行实际构建、审计和证明重放。二者已停止常规运行，尚未删除或完成优化。此前“只保留一条成功接纳/交付链”的整体建议过粗，已撤回；不能因此丢掉必要的失败与 IO 边界覆盖。
+
+### 定理与运行检查如何分工
+
+`Proofs.lean`、`Workflow.lean`、`Engine.lean` 中的定理针对生产实际调用的纯转换函数，由 Lean 检查证明。`Tests/WorkflowScenarios.lean` 的 `ensure` 则是运行时样例断言；写成 Lean 不等于已有定理，把有限样例改成编译时求值也不等于证明所有输入。
+
+| 性质 | 当前依据 | 精简时的边界 |
+| --- | --- | --- |
+| 封存不可换、拒绝释放、旧范围结果被拒绝 | `sealed_cannot_be_replaced`、`rejection_releases`、`changed_scope_rejects` | 单纯重复这些纯状态结论的用例可以删除；文件是否真的按封存对象读取仍需 IO 检查。 |
+| 无环、父结果绑定当前路线与子成果 | `graph_acyclic`、`composed_result_has_current_children` | 可替代重复的图状态样例，不证明源码组装器或外部 Lean 进程正确。 |
+| 取消保留在途义务、迟到观测不复活包、暂停阻止新包 | 对应 `cancel_preserves_obligations`、`late_observation_never_revives`、`pause_blocks_new_package` | 纯状态性质已有证明；实际进程返回后证据是否落盘、断线后是否重复启动仍是 IO 问题。 |
+| 请求重放幂等、预算精确上限、答复适用条件 | 纯转换守卫与部分样例 | 可作为补充通用定理的候选；尚不能宣称这些完整性质都已证明。 |
+| Git 引用竞争、文件内容绑定、进程结果映射、MCP/用户问答路由、导出程序可运行 | 外部设施与 IO 接入实现 | 现有状态定理不能替代实际边界检查。 |
+
+`accepted_binding` 证明的是：接纳必须收到匹配当前范围和候选的 `passed` 结果。它不证明验证器确实核验了实际文件。候选代码的证明检查发生在候选生成以后，不能用控制器自身编译通过来代替。能从回归套件移除的是重复用例，不能因此删除对动态输入的准入守卫或候选核验。
+
+### 两个长 Python 检查的用途与待审方案
+
+- `integration.py` 直接驱动 CLI、Git 和 Lean：检查真实候选接纳，错误 FIFO、`sorry` 和缺失证明被拒绝；封存后本地改动不影响终稿、并发提交一次生效；多层精化/组合、规格变更、旧成果复用、源码实现不匹配；导出程序可运行及篡改产物被发现。
+- `workflow.py` 通过真实 MCP 适配器和原生执行通道串起四类包：探索预算与原始结果、独立用户答复和丢失上下文恢复、双 worker 与暂停后封存恢复、实际交付；还检查核验期间取消后迟到结果真实归档，以及已登记但未得到结果的操作不会被盲目重跑。
+
+两者都有价值，但混合了重复状态回归与独立的外部接入断言。修订建议尚待用户决定：逐条将断言对应到已有定理；纯逻辑缺口优先补证明；外部边界保留小而独立的成功/失败检查，用确定的短操作制造 IO 异常，避免为每种状态重新编译完整 FIFO。至少保留真实验证器接纳与拒绝路径、实际产物绑定/运行的接入检查；一条成功链不能替代全部边界。
 
 已移除超过 30 秒、且退出本轮范围的 `Tests/isolation/verifier.py` 与 `parallel_check.py` 及其专用记录 helper。SID 启动诊断仍保留在 `experiments/`；生产入口模式已有 6.4 秒记录，已加整体时间预算，本轮按权限检查跳过要求不重跑。
 
