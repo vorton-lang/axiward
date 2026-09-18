@@ -69,7 +69,7 @@ def workflowStep (s : Domain) (actor : Actor) (command : WorkflowCommand) (usabl
     unless p.input == s.scope && usable do return (w, true, .rejected serial "scope changed")
     unless validQuestion question do throw .invalidInput
     if w.decisions.any (fun x => x.serial == serial) then throw .wrongPhase
-    return ({ w with decisions := w.decisions ++ [⟨serial, p.owner, p.input, candidate, question, none, false⟩] },
+    return ({ w with decisions := w.decisions ++ [⟨serial, p.owner, p.input, candidate, question, none⟩] },
       false, .waitingUser serial)
   | .answer serial choice comment, .user =>
     let some question := w.decisions.find? (fun x => x.serial == serial) | throw .invalidInput
@@ -85,8 +85,9 @@ def workflowStep (s : Domain) (actor : Actor) (command : WorkflowCommand) (usabl
     let some question := w.decisions.find? (fun x => x.serial == serial) | throw .invalidInput
     unless question.owner == owner do throw .forbidden
     unless question.answer.isSome do throw .wrongPhase
-    return ({ w with decisions := w.decisions.map (fun x =>
-      if x.serial == serial then { x with acknowledged := true } else x) }, false, .acknowledged serial)
+    -- Retain the original reply so schema-3 journals replay exactly. Reading has
+    -- no live state: old acknowledgement events no longer mutate decisions.
+    return (w, false, .acknowledged serial)
   | .pause value reason, .user =>
     return ({ w with paused := value, pauseReason := reason }, false, .paused value)
   | .access resource allowed, .user =>

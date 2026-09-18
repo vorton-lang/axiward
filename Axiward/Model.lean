@@ -179,7 +179,6 @@ structure Decision where
   candidate : Candidate
   question : Question
   answer : Option Answer := none
-  acknowledged : Bool := false
   deriving Repr, BEq, DecidableEq, ToJson, FromJson
 
 structure WorkflowState where
@@ -200,7 +199,7 @@ inductive WorkflowCommand where
   | conclude (serial : Nat) (report : String)
   | ask (serial : Nat) (question : Question)
   | answer (serial : Nat) (choice comment : String)
-  | acknowledge (serial : Nat)
+  | acknowledge (serial : Nat) -- Historical journal event only; no worker entry point.
   | pause (paused : Bool) (reason : String)
   | access (resource : String) (allowed : Bool)
   deriving Repr, BEq, DecidableEq, ToJson, FromJson

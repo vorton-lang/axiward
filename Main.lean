@@ -94,14 +94,14 @@ def main (args : List String) : IO UInt32 := do
     | ["revise-preview", repo, id, policy] => emit (← Controller.revision repo id policy)
     | ["revise", repo, id, policy, base] => emit (← Controller.revision repo id policy (some base))
     | ["overview", repo] => emit (Interface.status (← Git.load repo))
-    | ["worker-status", repo, owner] =>
+    | ["worker-status", repo, _owner] =>
       let loaded ← Git.load repo
-      emit (Json.mkObj [("status", Interface.status loaded),
-        ("navigation", Interface.navigation loaded.state),
-        ("inbox", Interface.inbox loaded.state owner)])
+      emit (Interface.workerStatus loaded)
     | ["session", repo, view, python, adapter] => emit (← Interface.session repo view python adapter)
     | ["package-info", repo, owner, node, serial] =>
       emit (← Interface.packageInfo repo owner (← serialOf node) (← serialOf serial))
+    | ["package-view", repo, owner, view, node, serial] =>
+      emit (← Interface.exportView repo view owner (← serialOf node) (← serialOf serial))
     | ["navigate", repo] => emit (Interface.navigation (← Git.load repo).state)
     | ["next", repo, id, owner, view] => emit (← Interface.next repo view id owner)
     | ["next", repo, id, owner, view, node, action] =>
@@ -123,9 +123,6 @@ def main (args : List String) : IO UInt32 := do
       emit (toJson (← FlowIO.conclude repo id owner (← serialOf node) (← serialOf serial) report))
     | ["decide", repo, id, node, serial, choice, comment] =>
       send repo id .user (.workflow (.answer (← serialOf serial) choice comment)) (← serialOf node)
-    | ["inbox", repo, owner] => emit (Interface.inbox (← Git.load repo).state owner)
-    | ["acknowledge", repo, id, owner, node, serial] =>
-      send repo id (.worker owner) (.workflow (.acknowledge (← serialOf serial))) (← serialOf node)
     | ["pause", repo, id, reason] => send repo id .user (.workflow (.pause true reason)) 0
     | ["resume", repo, id] => send repo id .user (.workflow (.pause false "")) 0
     | ["access", repo, id, resource, permission] =>

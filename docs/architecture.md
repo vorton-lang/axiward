@@ -38,7 +38,7 @@ flowchart TD
 | `Interface` / `Main` | 四动作评分、固定快照材料、worker 视图、用户管理命令、交付导出。 |
 | `adapter/server.py` / `native.py` | 原生 MCP 和进程协议；不自主调度、不持有权威状态、不开放管理员工具。 |
 
-用户通道与 worker 工具分离。启动配置绑定 worker 身份；同一视图用于一个原生任务，多任务使用不同视图。MCP 用户提问的回包进入原调用；未读答复存于 Git，断线后可恢复。
+用户通道与 worker 工具分离。启动配置绑定 worker 身份；同一视图同时用于一个原生任务，多任务使用不同视图。MCP 用户提问的回包进入原调用；决定存于 Git。`status` 和包视图从同一个当前版本计算完整交接，按目标、版本和访问权限提供决定，不按提问者或已读状态过滤。包输入仍绑定领取快照；`current/` 记录与固定的 `node/` 材料明确区分。新工作包可以使用全新 worker；活动包写权限仍绑定原 owner。
 
 探索中的原始执行记录来自 [Codex `command/exec`](https://developers.openai.com/codex/app-server)，模型解释另存。实验意图先提交，只有成功创建意图的调用方发起执行；缺少结果时不盲重跑。
 

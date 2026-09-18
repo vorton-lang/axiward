@@ -121,7 +121,7 @@ def main():
     try:
         client.send({"id": "list", "method": "tools/list"})
         tools = client.receive()["result"]["tools"]
-        assert not {"decide", "revise", "observe", "run-experiment"} & {x["name"] for x in tools}
+        assert not {"decide", "revise", "observe", "run-experiment", "inbox", "acknowledge"} & {x["name"] for x in tools}
         start = cli("status", repo)["head"]
         client.call("decide", success=False, choice="yes", source="user")
         client.call("next", success=False, request_id="evil", owner="other")
@@ -177,18 +177,18 @@ def main():
         client.send({"id": question["id"], "result": {"action": "accept", "content": {"choice": "list"}}})
         response = client.receive()
         assert response["id"] == call_id
-        # Discard the result and restart: durable notification remains unread.
+        # Discard the result and restart: complete context is delivered again.
         client.close()
         client = Client(source, exe, repo, view, session["worker"], events)
         state = client.call("status")
-        assert state["inbox"][0]["decision"]["answer"]["applicable"] is True
+        assert state["handoff"]["decisions"][0]["applicableNow"] is True
         assert state["status"]["paused"] and not state["status"]["rootClosed"]
         client.call("next", request_id="blocked")
         assert cli("status", repo)["state"]["active"] is None
-        client.call("acknowledge", request_id="ack", node=0, serial=1)
-        assert client.call("status")["inbox"] == []
+        assert client.call("status") == state
+        assert second.call("status")["handoff"] == state["handoff"]
         cli("resume", repo, "resume-user")
-        ok("user-only elicitation survives pause and transport restart; explicit inbox acknowledgement")
+        ok("user-only elicitation survives pause and lost context; another identity receives the complete decision")
 
         pkg = client.call("next", request_id="route", node=0, action="refine")
         directory = Path(pkg["candidateDirectory"])
@@ -197,6 +197,10 @@ def main():
         client.call("submit", request_id="route-submit", node=0, serial=2)
         left = client.call("next", request_id="left", node=1, action="execute")
         right = second.call("next", request_id="right", node=2, action="execute")
+        assert right["handoff"]["decisions"][0]["applicableNow"]
+        assert right["handoff"]["decisions"][0]["node"] == 0
+        assert right["handoff"]["decisions"][0]["sourceOwner"] == session["worker"]
+        assert any(c["node"] == 0 and c["relation"] == "current-ancestor" for c in right["handoff"]["contexts"])
         second.call("submit", success=False, request_id="steal", node=1, serial=0)
         candidate(Path(left["candidateDirectory"]))
         candidate(Path(right["candidateDirectory"]))
@@ -205,7 +209,9 @@ def main():
         sealed = cli("status", repo)
         assert "checking" in sealed["nodes"][1]["domain"]["active"]["phase"]
         cli("resume", repo, "resume-draft")
-        client.call("resume", node=1, serial=0)
+        recovered = client.call("resume", node=1, serial=0)
+        assert recovered["status"]["head"] == recovered["handoff"]["currentHead"]
+        assert recovered["snapshot"] == left["snapshot"]
         assert not cli("overview", repo)["complete"]
         second.call("submit", request_id="right-submit", node=2, serial=0)
         final = cli("overview", repo)

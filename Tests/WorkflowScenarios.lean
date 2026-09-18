@@ -5,8 +5,8 @@ open Axiward
 def ensure (condition : Bool) (message : String) : IO Unit :=
   unless condition do throw (IO.userError message)
 
-def advance (s : State) (actor : Actor) (command : Command) : IO State := do
-  let request : Request := ⟨s!"event-{s.journal.entries.length}", actor, command, 0⟩
+def advance (s : State) (actor : Actor) (command : Command) (node : Nat := 0) : IO State := do
+  let request : Request := ⟨s!"event-{s.journal.entries.length}", actor, command, node⟩
   return (← Git.decode ((step s request).mapError (fun e => s!"{repr e}"))).after
 
 def refused (s : State) (actor : Actor) (command : Command) (fault : Fault) : IO Unit := do
@@ -15,7 +15,51 @@ def refused (s : State) (actor : Actor) (command : Command) (fault : Fault) : IO
   | .error actual => ensure (actual == fault) s!"expected {repr fault}, received {repr actual}"
   | .ok _ => throw (IO.userError "forbidden transition succeeded")
 
+def handoffCases : IO Unit := do
+  -- Checked refinement is a protocol fixture, as in StoreScenarios. Actual
+  -- refinement proofs and descendant handoff are also exercised by workflow.py.
+  let a : Requirement := ⟨"a", "one"⟩
+  let b : Requirement := ⟨"b", "one"⟩
+  let root : Scope := ⟨0, "spec", "policy", [a, b]⟩
+  let childA : Scope := ⟨0, "spec-a", "policy-a", [a]⟩
+  let childB : Scope := ⟨0, "spec-b", "policy-b", [b]⟩
+  let question : Question := ⟨"Which approach?", "this exact goal", [⟨"list", "list"⟩]⟩
+  let ask (s : State) (node serial : Nat) : IO State := do
+    let s ← advance s .controller (.begin "original" .requestDecision) node
+    let s ← advance s (.worker "original") (.submit serial ⟨"question"⟩) node
+    let s ← advance s .controller (.workflow (.ask serial question)) node
+    advance s .user (.workflow (.answer serial "list" "scoped preference")) node
+  let mut s ← Git.decode (restore { initial := root })
+  s ← ask s 0 0
+  s ← advance s .controller (.begin "planner" .refine)
+  s ← advance s (.worker "planner") (.submit 1 ⟨"plan"⟩)
+  s ← advance s .controller (.finishRefinement 1
+    (.passed ⟨root, ⟨"plan"⟩, [.fresh childA, .fresh childB], "certificate", none⟩) "fixture")
+  s ← ask s 1 0
+  s ← ask s 2 0
+  s ← advance s .controller (.begin "fresh" .execute) 1
+  let snapshot := s
+  let before := Interface.handoff ⟨"before", s⟩ (some (1, snapshot, "input"))
+  let decisions : List Lean.Json ← Git.decode (before.getObjValAs? _ "decisions")
+  ensure (decisions.map (fun q => (q.getObjValAs? Nat "node").toOption) == [some 1, some 0])
+    "handoff omitted the ancestor or included an unrelated sibling decision"
+  ensure (decisions.all (fun q => (q.getObjValAs? Bool "applicableNow").toOption == some true))
+    "current scoped preferences were not supplied to the fresh worker"
+  s ← advance s .user (.revise root ⟨0, "spec-new", "policy-new", [⟨"a", "two"⟩, b]⟩)
+  let after := Interface.handoff ⟨"after", s⟩ (some (1, snapshot, "input"))
+  let decisions : List Lean.Json ← Git.decode (after.getObjValAs? _ "decisions")
+  ensure (decisions.length == 1 && decisions.all (fun q =>
+    (q.getObjValAs? Bool "recordedApplicable").toOption == some true &&
+    (q.getObjValAs? Bool "applicableNow").toOption == some false))
+    "unchanged child scope bypassed a changed root requirement dependency"
+  let unaffected := Interface.handoff ⟨"after", s⟩ (some (2, snapshot, "input"))
+  let decisions : List Lean.Json ← Git.decode (unaffected.getObjValAs? _ "decisions")
+  ensure (decisions.length == 1 && decisions.all (fun q =>
+    (q.getObjValAs? Bool "applicableNow").toOption == some true))
+    "unaffected requirement dependency lost its applicable preference"
+
 def main : IO Unit := do
+  handoffCases
   let scope : Scope := ⟨0, "spec", "policy", [⟨"root", "v1"⟩]⟩
   let mut s ← Git.decode (restore { initial := scope })
   s ← advance s .controller (.begin "worker" .explore)
@@ -63,7 +107,15 @@ def main : IO Unit := do
   ensure ((s.domain.workflow.decisions[1]?.bind (·.answer)).any (fun a => !a.applicable))
     "freeform input was promoted to authority"
   refused s (.worker "intruder") (.workflow (.acknowledge 2)) .forbidden
+  let decisionsBefore := s.domain.workflow.decisions
+  -- Legacy events still produce their original reply during journal replay,
+  -- but no read/delivery state survives in the current model.
   s ← advance s (.worker "worker") (.workflow (.acknowledge 2))
+  ensure (s.domain.workflow.decisions == decisionsBefore) "legacy acknowledgement mutated current decisions"
+  let legacy : Journal ← Git.decode (Lean.fromJson? (Lean.toJson s.journal))
+  let recoveredLegacy ← Git.decode (restore legacy)
+  ensure (recoveredLegacy.domain == s.domain && recoveredLegacy.journal == legacy)
+    "legacy acknowledgement history did not decode and replay exactly"
   s ← advance s .controller (.begin "worker" .explore)
   s ← advance s (.worker "worker") (.submit 3 ⟨"plan2"⟩)
   s ← advance s .controller (.workflow (.prepare 3 ⟨"analysis only", 0, "report alternatives"⟩))

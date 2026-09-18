@@ -28,9 +28,11 @@ lake env leanchecker Axiward
 .\.lake\build\bin\workflow_scenarios.exe
 python Tests/integration.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-regression
 python Tests/workflow.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-workflow
+python Tests/handoff.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-handoff
+python Tests/status_snapshot.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-status-snapshot
 python Tests/native.py --toolchain C:\Tools\lean-4.34.0-windows --output .work\new-native
 ```
 
-检查保留证据目录，不自动清理。`workflow.py` 和 `native.py` 的用户答复由测试客户端模拟，不是用户对真实产品的批准；不调用模型 API 或进行模型推理。
+检查保留证据目录，不自动清理。工作流、交接、快照和原生接入检查的用户答复均由测试客户端模拟，不是用户对真实产品的批准；不调用模型 API 或进行模型推理。
 
 MIT License.

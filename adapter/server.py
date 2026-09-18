@@ -30,11 +30,11 @@ NAT = {"type": "integer", "minimum": 0}
 PACKAGE = {"node": NAT, "serial": NAT}
 REQUEST = {"request_id": STRING, **PACKAGE}
 TOOLS = {
-    "status": ("Current graph, blocking work and unread user decisions.", schema()),
+    "status": ("Current graph and complete project handoff: scoped decisions, attempts and outstanding work.", schema()),
     "next": ("Resume your package or allocate the recommended action. Optional node/action selects an eligible alternative.",
              schema({"request_id": STRING, "node": NAT, "action": {
                  "type": "string", "enum": ["execute", "refine", "explore", "requestDecision"]}}, ["request_id"])),
-    "search": ("Search all readable material in this package's fixed snapshot.", schema({**PACKAGE, "query": STRING})),
+    "search": ("Search fixed node/ input materials and explicitly current/ handoff records. Access rules apply.", schema({**PACKAGE, "query": STRING})),
     "view_add": ("Export a catalog resource into the package view. Current access rules apply.", schema({**PACKAGE, "resource": STRING})),
     "evidence": ("Export actual checker diagnostics and this package's new observations into evidence.json, separate from model notes.", schema(PACKAGE)),
     "submit": ("Seal candidate/ once, check it and propagate proofs. For exploration use prepare, then conclude.", schema(REQUEST)),
@@ -45,7 +45,6 @@ TOOLS = {
     "conclude": ("Seal candidate/report.md as exploration interpretation; does not close the goal.", schema(REQUEST)),
     "cancel": ("End your active package; preserve observations and outstanding operations.", schema({**REQUEST, "reason": STRING})),
     "ask_user": ("Present the already registered question through the separate user channel. No answer argument exists.", schema(PACKAGE)),
-    "acknowledge": ("Acknowledge a durably recorded user answer after reading it.", schema(REQUEST)),
 }
 
 
@@ -98,6 +97,11 @@ class Adapter:
         if not directory.is_relative_to(self.view):
             raise ValueError("package view escapes its root")
         return package["domain"], directory
+
+    def package_view(self, node, serial):
+        # Current status and handoff come from the same controller load. The
+        # exported input files still use the allocation's immutable snapshot.
+        return self.cli("package-view", self.repo, self.worker, self.view, node, serial)
 
     def local(self, directory, *parts):
         path = directory.joinpath(*parts).resolve()
@@ -199,8 +203,7 @@ class Adapter:
                 self.cli("submit", self.repo, self.request_id(data["request_id"]), self.worker, serial,
                          sealed, node)
             result = self.cli("check", self.repo, f"{self.worker}/check/{node}/{serial}", serial, node)
-            return {"result": result, "status": self.cli("overview", self.repo),
-                    "evidence": self.cli("evidence", self.repo, self.worker, self.view, node, serial)}
+            return {"result": result, **self.package_view(node, serial)}
         if name == "experiment":
             if not re.fullmatch(r"[A-Za-z0-9_-]{1,64}", data["trial"]):
                 raise ValueError("trial must be a simple directory name")
@@ -210,31 +213,33 @@ class Adapter:
             intent = self.cli("start-experiment", self.repo, request_id, self.worker, node, serial,
                               sealed)
             if intent["replayed"]:
-                return intent
+                return {**intent, **self.package_view(node, serial)}
             capture = execute([str(self.exe), "run-experiment", str(self.repo), str(node), request_id],
                               directory, self.repo / "axiward-transport" / uuid.uuid4().hex)
             result = self.cli("record-experiment", self.repo, node, request_id, capture)
-            return {"result": result, "closesGoal": False,
-                    "evidence": self.cli("evidence", self.repo, self.worker, self.view, node, serial)}
+            return {"result": result, "closesGoal": False, **self.package_view(node, serial)}
         if name == "conclude":
             sealed = self.stage(self.local(directory, "candidate"), ["report.md"])
-            return self.cli("conclude", self.repo, self.request_id(data["request_id"]), self.worker,
-                            node, serial, sealed / "report.md")
+            result = self.cli("conclude", self.repo, self.request_id(data["request_id"]), self.worker,
+                              node, serial, sealed / "report.md")
+            return {"result": result, **self.package_view(node, serial)}
         if name == "cancel":
-            return self.cli("cancel", self.repo, self.request_id(data["request_id"]), self.worker, serial, data["reason"], node)
-        if name == "acknowledge":
-            return self.cli("acknowledge", self.repo, self.request_id(data["request_id"]), self.worker, node, serial)
+            result = self.cli("cancel", self.repo, self.request_id(data["request_id"]), self.worker, serial, data["reason"], node)
+            return {"result": result, **self.package_view(node, serial)}
         if name == "ask_user":
-            question = next((q for q in domain["workflow"]["decisions"] if q["serial"] == serial), None)
-            if not question or question["owner"] != self.worker:
+            view = self.package_view(node, serial)
+            question = next((q for q in view["handoff"]["decisions"] if q["node"] == node and q["serial"] == serial), None)
+            if question is None:
+                raise ValueError("question context is inaccessible; restore access before asking")
+            if question["sourceOwner"] != self.worker:
                 raise ValueError("no registered question for this worker")
             if question["answer"] is not None:
-                return question
-            if not domain["active"] or domain["active"]["serial"] != serial:
+                return view
+            if not question["pending"]:
                 raise ValueError("question package has ended")
             if not self.elicitation:
-                return {"waitingUser": True, "question": question,
-                        "message": "Client does not support elicitation. Use the separate user decide command, then resume this task."}
+                return {"waitingUser": True, **view,
+                        "message": "Client does not support elicitation. Use the separate user decide command, then read status or next."}
             key = "user-" + uuid.uuid4().hex
             self.pending[key] = (call_id, node, serial)
             choices = question["question"]["options"]
@@ -252,7 +257,8 @@ class Adapter:
         call_id, node, serial = self.pending.pop(message["id"])
         result = message.get("result", {})
         if result.get("action") != "accept":
-            tool_result(call_id, {"waitingUser": True, "message": "No answer recorded. Question remains pending."})
+            tool_result(call_id, {"waitingUser": True, "message": "No answer recorded. Question remains pending.",
+                                  **self.package_view(node, serial)})
             return
         content = result.get("content", {})
         choice, comment = content.get("choice"), content.get("comment", "")
@@ -260,8 +266,7 @@ class Adapter:
             tool_result(call_id, "invalid user response; question remains pending", True)
             return
         reply = self.cli("decide", self.repo, f"{self.worker}/answer/{node}/{serial}", node, serial, choice, comment)
-        # Do not acknowledge here: the response may be lost after this durable commit.
-        tool_result(call_id, {"decision": reply, "inbox": self.cli("inbox", self.repo, self.worker)})
+        tool_result(call_id, {"decision": reply, **self.package_view(node, serial)})
 
 
 def emit(item):

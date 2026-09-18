@@ -168,12 +168,14 @@ print(json.dumps(result))
         assert question["prompt"] in questions[0]["message"]
         assert answer["decision"] == {"answered": {"serial": 0, "applicable": True}}, answer
         status = tool(7, "status")
-        assert len(status["inbox"]) == 1
-        assert status["inbox"][0]["decision"]["answer"]["comment"] == "本次中文答复仅用于协议验收"
-        tool(8, "acknowledge", request_id="ack", node=0, serial=0)
-        assert tool(9, "status")["inbox"] == []
+        assert len(status["handoff"]["decisions"]) == 1
+        assert status["handoff"]["decisions"][0]["answer"]["comment"] == "本次中文答复仅用于协议验收"
+        assert status["handoff"]["decisions"][0]["applicableNow"]
+        assert answer["handoff"]["decisions"] == status["handoff"]["decisions"]
+        assert answer["status"]["head"] == answer["handoff"]["currentHead"]
+        assert tool(9, "status") == status
         result = {"status": "passed", "nativeThread": thread, "modelTurns": 0,
-                  "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "notification acknowledgement",
+                  "userReplies": "simulated test client", "checks": ["native MCP routing", "same-task user elicitation", "durable answer", "repeatable complete handoff",
                     "worker cannot read or write canonical storage", "worker cannot alter configuration or read controller/checker files",
                     "copied controller cannot forge user answer", "hard-linked input rejected by opened-handle check", "external reads and unrelated task remain available"]}
         (root / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")

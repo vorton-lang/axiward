@@ -46,8 +46,10 @@ def main():
 
     def components(worker):
         # No writer runs while these independent reference reads are collected.
-        value = {"status": cli("overview", repo), "navigation": cli("navigate", repo),
-                 "inbox": cli("inbox", repo, worker)}
+        value = cli("worker-status", repo, worker)
+        assert value["status"] == cli("overview", repo)
+        assert value["navigation"] == cli("navigate", repo)
+        assert value["handoff"]["currentHead"] == value["status"]["head"]
         assert cli("overview", repo)["head"] == value["status"]["head"]
         return value
 
@@ -68,12 +70,13 @@ def main():
             "answered": {"serial": serial, "applicable": True}}
 
     before = components(worker)
-    assert [item["decision"]["owner"] for item in before["inbox"]] == [worker]
+    assert [item["sourceOwner"] for item in before["handoff"]["decisions"]] == [worker, other]
+    assert all(item["applicableNow"] for item in before["handoff"]["decisions"])
     assert any(r["allowed"] for item in before["navigation"] for r in item["recommendations"])
     with (output / "mcp-events.jsonl").open("w", encoding="utf-8") as events:
         client = Client(source, exe, repo, view, worker, events)
         try:
-            # Preserve the wire shape, worker binding and read-without-ack semantics.
+            # Read repeatedly without consuming context or allowing forged identities.
             assert client.call("status") == before
             assert client.call("status") == before
             client.call("status", success=False, worker=other)
@@ -94,15 +97,18 @@ def main():
         return value
 
     # Hold the first real controller result before Adapter.call can finish.
-    # The old three-command implementation then reads navigation/inbox after the
+    # A split implementation would read navigation/handoff after the
     # commits below, despite reporting the earlier overview head.
     adapter.cli = read_then_wait
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending = pool.submit(adapter.call, "status", {}, "race")
         try:
             assert read_finished.wait(timeout=60), "status did not finish its first read"
+            cli("begin", repo, "race-question", other, 0, "requestDecision")
+            cli("submit", repo, "race-submit", other, 2, question)
+            cli("check", repo, "race-check", 2)
+            cli("decide", repo, "race-answer", 0, 2, "list", "new simulated decision")
             cli("pause", repo, "race-pause", "status snapshot fixture")
-            cli("acknowledge", repo, "race-ack", worker, 0, 0)
         finally:
             write_finished.set()
         actual = pending.result(timeout=60)
@@ -110,20 +116,20 @@ def main():
     after = components(worker)
     write("race.json", {"before": before, "returned": actual, "after": after})
     assert before["status"]["head"] != after["status"]["head"], "writer made no commit"
-    assert after["status"]["paused"] and after["inbox"] == []
+    assert after["status"]["paused"] and len(after["handoff"]["decisions"]) == 3
     assert not any(r["allowed"] for item in after["navigation"] for r in item["recommendations"])
-    assert len(cli("inbox", repo, other)) == 1, "acknowledgement affected another worker"
+    assert components(other)["handoff"] == after["handoff"], "handoff depends on worker identity"
     assert actual["status"]["head"] == before["status"]["head"]
-    for section in ("status", "navigation", "inbox"):
+    for section in ("status", "navigation", "handoff"):
         assert actual[section] == before[section], f"{section} differs from the returned head's snapshot"
     assert adapter.call("status", {}, "after") == after
     result = {"status": "passed", "seconds": round(time.monotonic() - started, 3),
               "snapshotHead": before["status"]["head"], "currentHead": after["status"]["head"],
               "checks": ["MCP response shape and protected worker binding",
-                         "status does not acknowledge or expose another worker's answer",
+                         "status repeats all relevant decisions across worker identities without writes",
                          "concurrent commits complete before status returns",
                          "all three response sections match the returned head",
-                         "later status observes pause and explicit acknowledgement"]}
+                         "later status observes pause and newly recorded user decision"]}
     write("results.json", result)
     print(json.dumps(result), flush=True)
 
