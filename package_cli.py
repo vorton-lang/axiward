@@ -67,10 +67,15 @@ CLI 会在初始化、建 session、领取新包和封存实现/精化候选前�
 Worker 使用已批准的完全访问模式，工作边界由生成的 `AGENTS.md` 说明。
 
 给 worker 的起始指令：先读取 Axiward status 和 handoff，自行选择 node 和 action，
-调用 next 后按 ACTION.md 完成本包；需要用户决定时用 ask_user。
+调用 next 后按返回的 actionInstructions 完成本包；需要用户决定时用 ask_user。
 实现包的 `Queue.lean`、`Proofs.lean` 直接写在 `$view` 下。
-包根的 `AGENTS.md` 和 `ACTION.md` 分别说明工作边界与当前动作；
-保留生成的规格、目标和 `.codex/` 配置，临时研究文件放在 `tmp/`。
+包根的唯一说明文件 `AGENTS.md` 同时说明工作边界与当前动作；
+保留根目录的 `Spec.lean`、`Goal.lean` 和 `.codex/` 连接配置。
+`.axiward/` 保存 `view.json`、按需导出的 `materials/` 和启动前备好的 `tmp/`；
+临时研究文件放在 `.axiward/tmp/`。完整证据只在显式调用 evidence 时导出到 `.axiward/evidence.json`。
+条款编号由工具响应和 `.axiward/view.json` 的 claims 字段提供，不另生成 claims.json。
+每次领取、恢复和已绑定包的 status 都返回完整交接、失败诊断、动作说明及实际路径；
+status 只读并保留项目地图，正式状态来自 Git，不能用本地 view.json 代替。
 一个视图永久绑定一个包；新包通过 session 创建新的 `.view/<名称>/` 空间。
 session 记录 exe、适配器和 Python 的绝对路径，开始使用后应保持发行目录位置稳定。
 

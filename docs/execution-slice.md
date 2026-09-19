@@ -155,6 +155,16 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 | `runtime_dependency.py --case late` | 封存后入口消失，真实 CLI 返回具体 Codex/PATH 原因并存入证据；未启动核验阶段，旧包按 unresolved 结束。 | 17.609 | 00阶段 |
 | `Tests/Diagnostics.lean` | 真实 Git 证据中的完整诊断、实际合并输入、位置、目标/前提及缺失信息；消息为协议夹具。 | 3.487 | 46阶段 |
 
+本轮包工作区整理另做以下独立复核；上表仍是各自旧阶段的观测，不代表本轮全部重跑。以下检查均含各自准备过程、单次小于 30 秒，无模型推理：
+
+| 检查 | 实际边界 | 秒 |
+| --- | --- | ---: |
+| 编译、内核审计与证明重放 | `lake build axiward verifier_boundary`；`Tests/Audit.lean` 审计 2166 个声明，无 `sorry` 或额外公理；`leanchecker Axiward` 独立重放。 | 19.687 / 4.500 / 5.047 |
+| `layout.py` 四动作 | execute/refine/explore/requestDecision 的真实 CLI、适配器和 Git 封存 IO；根目录、包内元数据路径及封存白名单正确。check 派发明确截断为 `verificationNotRun`，不冒充数学核验。 | 16.812 / 15.469 / 15.610 / 15.390 |
+| `status_snapshot.py` | 已绑定包的只读查询与真实暂停交错；状态和交接同快照，项目地图、动作、路径完整，包文件字节与 mtime 不变；拒绝访问条款时返回 `null`。 | 19.156 |
+| `integration.py --case merge-breaks-prior` | 真实 Lean 拒绝破坏旧保证的合并候选，保留原始诊断；前置已接纳状态是明确的协议夹具。 | 18.953 |
+| `diagnostic_handoff.py` 的 initial-source / acquisition / evidence | 从本轮真实失败只读恢复完整诊断；损坏或删除本地 view 不改变正式查询，恢复保留草稿且不复活已删候选，源码及证据访问拒绝仍生效。各 case 新建受管测试项目，不重跑核验；完整证据只在显式请求时导出。 | 25.016 / 15.875 / 20.187 |
+
 `merged` 首跑被 28 秒保护终止，不计通过；保留核验全部阶段后减少重复规格摘要生成，第二次才通过。不可变诊断投影另在 `merge-breaks-prior` 的真实失败上只读核对，1.467 秒：实际合并候选不同于原稿，读取 `Gate.lean:12:48` 的缺失定理诊断，HEAD 不变且未重跑核验。新包完整交接和访问拒绝的六个独立边界均由 `Tests/diagnostic_handoff.py` 验证，包含 Git clone、session 和 next；原失败项目 HEAD 不变，未生成新的核验目录。可先运行 `integration.py --case merge-breaks-prior`，再用 `python Tests/diagnostic_handoff.py --repo <该检查输出>/project --output <新目录> --case acquisition`；其他 case 为 evidence、history、candidate、previous-file、initial-source。纯诊断投影入口是 `lake env lean --run Tests/Diagnostics.lean <新目录>`。
 
 Codex 依赖检查仅运行 `codex --version`，确认当前进程能启动该入口；不安装或发现其他位置的 CLI，不写全局环境，不替代实际核验。`Sandbox` 在真正启动外部进程时也保留具体错误。缺失入口的检查只改变新建 `.work/` 项目的子进程环境，未操作用户正在使用的项目。

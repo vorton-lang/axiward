@@ -24,7 +24,7 @@ def send (repo : String) (id : String) (actor : Actor) (command : Axiward.Comman
 def usage : String := "axiward init <new-absolute-project-directory> <trusted-policy-dir> <lean-toolchain>\n\
   axiward session <repo> <repo/.view/new-package-space> <python.exe> <adapter/server.py>\n\
   axiward overview <repo>\n\
-  axiward worker-status <repo> <worker-id>\n\
+  axiward worker-status <repo> <worker-id> [view]\n\
   axiward next <repo> <request-id> <worker-id> <view> <node> <action>\n\
   axiward next <repo> <request-id> <worker-id> <view> (resume bound package only)\n\
   axiward search <repo> <worker-id> <node> <serial> <query>\n\
@@ -110,6 +110,13 @@ def main (args : List String) : IO UInt32 := do
     | ["revise-preview", repo, id, policy] => emit (← Controller.revision repo id policy)
     | ["revise", repo, id, policy, base] => emit (← Controller.revision repo id policy (some base))
     | ["overview", repo] => emit (Interface.status (← Git.load repo))
+    | ["worker-status", repo, owner, view] =>
+      let loaded ← Git.load repo
+      if let some (node, serial) := Interface.sessionPackage loaded.state owner then
+        emit (← Interface.exportViewLoaded repo view loaded owner node serial false)
+      else
+        let result ← Interface.workerStatus repo loaded
+        emit (result.setObjVal! "guide" (toJson (FilePath.mk view / "AGENTS.md").toString))
     | ["worker-status", repo, _owner] =>
       let loaded ← Git.load repo
       emit (← Interface.workerStatus repo loaded)

@@ -9,7 +9,7 @@
 - 用户决定走独立问答通道，worker 不自行填写答复或调用管理 CLI。
 - 完全访问模式不会在操作系统层阻止绕行。MCP 入口继续检查参数、归属、候选路径和封存规则，这些检查不等于机器级隔离。
 
-`session` 生成 `sandbox_mode = "danger-full-access"`，保留独立的 MCP 用户问答。生成的 `AGENTS.md` 与 `ACTION.md` 说明上述约定；不修改全局 Codex 配置。
+`session` 生成 `sandbox_mode = "danger-full-access"`，保留独立的 MCP 用户问答。包根唯一的 `AGENTS.md` 说明上述约定与当前动作；不修改全局 Codex 配置。
 
 ## 候选核验进程
 

@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import sys
 import time
+import tomllib
 
 
 def main():
@@ -75,12 +76,29 @@ def main():
         cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
         assert (repo / ".gitignore").read_text() == "/.view/\n/.checks/\n/delivery/\n"
         view = repo / ".view" / "package"
-        owner = cli("session", repo, view, sys.executable, source / "adapter/server.py")["worker"]
+        session = cli("session", repo, view, sys.executable, source / "adapter/server.py")
+        owner = session["worker"]
+        metadata = view / ".axiward"
+        assert (metadata / "tmp").is_dir(), "temporary directory must exist before the worker starts"
+        config = tomllib.loads(Path(session["configuration"]).read_text(encoding="utf-8"))
+        for key in ("TMP", "TEMP"):
+            assert Path(config["shell_environment_policy"]["set"][key]) == metadata / "tmp"
         package = cli("next", repo, "next", owner, view, 0, args.case)
         assert Path(package["candidateDirectory"]) == view
-        assert all((view / name).is_file() for name in ("AGENTS.md", "ACTION.md", "Spec.lean", "Goal.lean", "view.json"))
-        assert all(not (view / name).exists() for name in ("work", "candidate", "WORK.md", "START.md"))
-        assert (view / "tmp").is_dir()
+        assert {path.name for path in view.iterdir()} == {"AGENTS.md", "Spec.lean", "Goal.lean", ".codex", ".axiward"}
+        assert Path(package["guide"]) == view / "AGENTS.md"
+        assert Path(package["viewPath"]) == metadata / "view.json"
+        assert Path(package["evidencePath"]) == metadata / "evidence.json"
+        assert Path(package["materialsDirectory"]) == metadata / "materials"
+        assert Path(package["tempDirectory"]) == metadata / "tmp"
+        assert package["claims"] == [0, 1, 2, 3, 4, 5]
+        assert json.loads((metadata / "view.json").read_text(encoding="utf-8")) == package
+        assert package["actionInstructions"].strip() in (view / "AGENTS.md").read_text(encoding="utf-8")
+        assert package["handoff"]["inputSnapshot"]["head"] == package["snapshot"]
+        assert package["handoff"]["currentHead"] == package["status"]["head"]
+        assert package["status"]["map"] and isinstance(package["handoff"]["diagnostics"], list)
+        assert not (metadata / "evidence.json").exists()
+        assert not (metadata / "materials").exists()
         files = {"execute": ["Queue.lean", "Proofs.lean"],
                  "refine": ["plan.json", "Refinement.lean"],
                  "explore": ["exploration.json"], "requestDecision": ["question.json"]}[args.case]
@@ -106,6 +124,7 @@ def main():
         response = adapter.call("prepare" if args.case == "explore" else "submit",
                                 {"request_id": "seal", "node": 0, "serial": 0}, "layout-fixture")
         assert response["result"] == {"verificationNotRun": True} and len(dispatched) == 1
+        assert not (metadata / "evidence.json").exists(), "ordinary package refresh must not export full evidence"
         expected = {"submission.json" if args.case in {"execute", "refine"} else "submission.txt"}
         expected.update(("Axiward/" + name if args.case == "execute" else name) for name in files)
         actual = set(git("ls-tree", "-r", "--name-only", "HEAD:.axiward/candidate").splitlines())
@@ -114,7 +133,13 @@ def main():
             sealed = f'HEAD:.axiward/candidate/{"Axiward/" if args.case == "execute" else ""}{name}'
             assert run(["git", "-C", repo, "show", sealed]) == (view / name).read_bytes().decode("utf-8")
         artifact = adapter.call("evidence", {"node": 0, "serial": 0}, "evidence")
-        assert Path(artifact["path"]) == view / "evidence.json"
+        assert Path(artifact["path"]) == metadata / "evidence.json"
+        assert (metadata / "evidence.json").is_file() and not (view / "evidence.json").exists()
+        if args.case == "execute":
+            resource = "node/0/spec"
+            material = adapter.call("view_add", {"node": 0, "serial": 0, "resource": resource}, "material")
+            assert Path(material["path"]) == metadata / "materials/node_0_spec.txt"
+            assert Path(material["path"]).read_bytes() == (view / "Spec.lean").read_bytes()
         assert not (repo / ".checks").exists(), "sealing unexpectedly invoked a verifier"
         assert not (output / "project.checks").exists()
     result = {"case": args.case, "status": "passed", "seconds": round(time.monotonic() - started, 3),

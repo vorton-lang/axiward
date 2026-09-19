@@ -37,7 +37,7 @@ TOOLS = {
                  "type": "string", "enum": ["execute", "refine", "explore", "requestDecision"]}}, ["request_id"])),
     "search": ("Search fixed node/ input materials and explicitly current/ handoff records. Access rules apply.", schema({**PACKAGE, "query": STRING})),
     "view_add": ("Export a catalog resource into the package view. Current access rules apply.", schema({**PACKAGE, "resource": STRING})),
-    "evidence": ("Export actual checker diagnostics and this package's new observations into evidence.json, separate from model notes.", schema(PACKAGE)),
+    "evidence": ("Export actual checker diagnostics and this package's new observations into .axiward/evidence.json only on request, separate from model notes.", schema(PACKAGE)),
     "submit": ("Seal this action's candidate files in the package root once, check it and propagate proofs. For exploration use prepare, then conclude.", schema(REQUEST)),
     "prepare": ("Admit exploration.json before experiments (0..8 checker trials).", schema(REQUEST)),
     "resume": ("Resume checking the same sealed submission after interruption.", schema(PACKAGE)),
@@ -167,7 +167,7 @@ class Adapter:
     def call(self, name, data, call_id):
         self.validate(name, data)
         if name == "status":
-            return self.cli("worker-status", self.repo, self.worker)
+            return self.cli("worker-status", self.repo, self.worker, self.view)
         if name == "next":
             if ("node" in data) != ("action" in data):
                 raise ValueError("node and action must be provided together")

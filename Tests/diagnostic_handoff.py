@@ -120,6 +120,11 @@ def main():
         assert not (candidate_directory / "Queue.lean").exists()
         assert (candidate_directory / "Proofs.lean").is_file(), "an allowed source file was not initialized"
         assert following["blockedSourceFiles"] == [initial_denial]
+        status = cli("worker-status", repo, owner, view)
+        assert status["blockedSourceFiles"] == [initial_denial]
+        assert status["status"]["map"] == following["status"]["map"]
+        assert status["handoff"]["currentHead"] == status["status"]["head"]
+        assert failure(status["handoff"])["diagnostic"] == row["diagnostic"]
         source_resource = f"node/{args.node}/source"
         assert following["sourceResource"] == source_resource
         source_files = json.loads(read(source_resource)["content"])
@@ -133,6 +138,23 @@ def main():
             expected = run(["git", "-C", repo, "show", f'{following["sourceBase"]["tree"]}:{record["file"]}'])
             assert record["content"]["raw"] == expected
         assert following["sourceBase"] != merge["merged"], "baseline must remain distinct from the rejected merge"
+        draft = "-- unsubmitted worker draft\n"
+        (view / "Queue.lean").write_text(draft, encoding="utf-8")
+        (view / "Proofs.lean").unlink()
+        view_file = view / ".axiward/view.json"
+        view_file.write_text("invalid stale view", encoding="utf-8")
+        status = cli("worker-status", repo, owner, view)
+        assert status["snapshot"] == following["snapshot"] and status["blockedSourceFiles"] == []
+        assert status["claims"] == following["claims"] and status["actionInstructions"]
+        assert view_file.read_text(encoding="utf-8") == "invalid stale view", "status rewrote the local view"
+        view_file.unlink()
+        recovered = cli("next", repo, "recover-existing", owner, view)
+        assert recovered["serial"] == serial and recovered["snapshot"] == following["snapshot"]
+        assert recovered["claims"] == following["claims"] and recovered["actionInstructions"]
+        assert recovered["blockedSourceFiles"] == []
+        assert (view / "Queue.lean").read_text(encoding="utf-8") == draft, "recovery overwrote a draft"
+        assert not (view / "Proofs.lean").exists(), "recovery revived a deleted candidate"
+        assert not (view / ".axiward/evidence.json").exists(), "status or recovery exported full evidence"
     else:
         denied = {"evidence": evidence,
                   "history": f"node/{args.node}/history",
@@ -145,7 +167,7 @@ def main():
             assert "access revoked" in read(denied, success=False)["error"]
         if args.case in {"evidence", "history"}:
             assert "access revoked" in read(f"current/{denied}", success=False)["error"]
-            status = cli("worker-status", repo, owner)
+            status = cli("worker-status", repo, owner, view)
             hidden = failure(status["handoff"])
             assert hidden["unavailable"] == "access revoked" and "diagnostic" not in hidden
             assert status["handoff"]["blockedByMissingContext"]

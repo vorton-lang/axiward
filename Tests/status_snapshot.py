@@ -39,10 +39,18 @@ def main():
         return json.loads(run.stdout)
 
     cli("init", repo, source / "examples/fifo/policy", args.toolchain.resolve())
-    view.mkdir(parents=True)
-    adapter = Adapter(exe, repo, view, "reader")
-    before = cli("worker-status", repo, "reader")
+    owner = cli("session", repo, view, sys.executable, source / "adapter/server.py")["worker"]
+    cli("next", repo, "allocate", owner, view, 0, "execute")
+    adapter = Adapter(exe, repo, view, owner)
+    before = cli("worker-status", repo, owner, view)
     assert not before["status"]["paused"] and not before["handoff"]["paused"]
+    assert before["status"]["map"] and before["actionInstructions"]
+
+    def workspace():
+        return {str(path.relative_to(view)): None if path.is_dir() else
+                (path.read_bytes(), path.stat().st_mtime_ns) for path in view.rglob("*")}
+
+    original_files = workspace()
     committed = False
 
     def read_then_commit(*arguments):
@@ -57,7 +65,7 @@ def main():
 
     adapter.cli = read_then_commit
     actual = adapter.call("status", {}, "race")
-    after = cli("worker-status", repo, "reader")
+    after = cli("worker-status", repo, owner, view)
     (output / "race.json").write_text(json.dumps(
         {"before": before, "returned": actual, "after": after}, ensure_ascii=False, indent=2), encoding="utf-8")
     assert committed and before["status"]["head"] != after["status"]["head"]
@@ -66,10 +74,18 @@ def main():
     assert actual["status"]["head"] == actual["handoff"]["currentHead"]
     adapter.cli = cli
     assert adapter.call("status", {}, "repeat") == after, "reading status changed or consumed state"
+    cli("access", repo, "deny-claims", "node/0/claims", "deny")
+    denied = adapter.call("status", {}, "denied-claims")
+    assert denied["claims"] is None, "status leaked revoked claims from the old view"
+    assert denied["handoff"]["blockedByMissingContext"]
+    assert workspace() == original_files, "status wrote to the package workspace"
     result = {"status": "passed", "seconds": round(time.monotonic() - started, 3),
               "checks": ["real commit between component reads cannot mix response versions",
                          "later status observes the committed pause",
-                         "repeated reads do not change or consume state"]}
+                         "bound status retains project map and action instructions",
+                         "revoked claims are not recovered from a stale local view",
+                         "repeated reads do not change state or write package files"]}
+    assert result["seconds"] < 30
     (output / "results.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result), flush=True)
 

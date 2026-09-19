@@ -86,7 +86,11 @@ codex --version
 
 `$repo` 是人可以直接打开的项目根：`.git/` 保存 Git 数据，`.axiward/` 管理状态及正式成果随 Git 提交，`source/` 保存正式共享源码，`product/` 保留当前格式的根产物。`.gitignore` 排除 `/.view/`、`/.checks/` 和 `/delivery/`；每个包的工作空间是其中一个独立目录。控制端提交后同步普通签出文件，碰到会被覆盖的本地修改或未跟踪文件则拒绝继续，不丢弃草稿。若提交已记录而签出中断，后续写请求会先恢复签出；只读状态始终来自 Git 提交。
 
-`.view/<包空间>/` 本身就是候选工作区：`Queue.lean`、`Proofs.lean` 或当前动作所需文件直接放在包根，不再经过 `work/`、`candidate/`。初始只有 `.codex/` 配置、`AGENTS.md` 和 `tmp/`；领取后在包根提供 `ACTION.md`、规格、目标、view/evidence JSON，按需材料放在 `materials/`。不再生成重复的 `WORK.md`、`START.md`。核验临时副本在项目根 `.checks/<run>/snapshot/`，交付默认在 `delivery/`；正常流程不再生成仓库旁检查或交付目录。旧目录和已有工作空间不会自动移动、迁移或删除。未提交草稿不由 Axiward 保证保存或恢复。受管项目的正式 Git 写入通过 Axiward，普通浏览无需控制入口。
+`.view/<包空间>/` 本身就是候选工作区：`Queue.lean`、`Proofs.lean` 或当前动作所需文件直接放在包根；领取后的根目录还提供 `Spec.lean`、`Goal.lean` 和唯一说明文件 `AGENTS.md`。`AGENTS.md` 同时包含工作边界与当前动作格式，不另生成 `ACTION.md`、`WORK.md`、`START.md` 或 `claims.json`。
+
+`.codex/` 保留连接配置；包内 `.axiward/` 保存生成的 `view.json`，按需创建的 `materials/` 和启动前备好的 `tmp/`。临时研究文件放在 `.axiward/tmp/`。完整原始证据只在显式调用 `evidence` 时写入 `.axiward/evidence.json`；正常领取、恢复、查询和提交不会自动导出它。
+
+核验临时副本在项目根 `.checks/<run>/snapshot/`，交付默认在 `delivery/`。旧目录和已有工作空间不会自动移动、迁移或删除。未提交草稿不由 Axiward 保证保存或恢复。受管项目的正式 Git 写入通过 Axiward，普通浏览无需控制入口。
 
 每个视图同时只给一个原生任务使用。`session` 先创建空工作空间与身份，首次领取后永久绑定一个包；编号不需要预先写在目录名里。包结束后 `next` 返回原包及 `requiresNewSession`，新包须用另一个 `.view/<名称>/` 空间和新 session。恢复原包仍使用其所属视图，另一身份不能自动接管。可以在新空间继承原 worker 的对话上下文，但不沿用旧空间权限。包不会自动过期，系统不自动启动或调度 worker。
 
@@ -102,7 +106,7 @@ codex --version
 
 封存只读取动作白名单中的候选文件：生成的 `Spec.lean`、`Goal.lean`、说明和 `.codex/` 不进入候选。正式 Git 中 `.axiward/candidate/` 仍是不可变封存证据，与用户工作区的扁平布局无关。
 
-`status` 返回项目地图和项目层 `handoff`。Worker 根据这些材料明确选择节点与 `execute`、`refine`、`explore`、`requestDecision` 中的一种动作，向 `next` 同时提供 `node` 和 `action`。控制器核准后返回固定动作、工作包编号、候选目录、规格和完整包级交接；领取后不能换类。省略节点和动作只用于恢复当前空间已经绑定的包，不会自动选择或领取新包。重新取得视图、恢复核验或接收答复时也提供完整交接。
+`status` 只读，未领包时返回项目地图与项目层 `handoff`。空间已绑定包时，保留项目地图并返回完整包级交接、失败诊断、`actionInstructions`、条款编号和实际路径；不依赖本地 `view.json`，也不改写包内文件。Worker 根据这些材料明确选择节点与 `execute`、`refine`、`explore`、`requestDecision` 中的一种动作，向 `next` 同时提供 `node` 和 `action`。控制器核准后返回固定动作、工作包编号、候选目录、规格和完整包级交接；领取后不能换类。省略节点和动作只用于恢复当前空间已经绑定的包，不会自动选择或领取新包。每次领取、恢复核验或接收答复都重新提供完整交接、动作说明及路径，不能依赖 Codex 曾经读过 `AGENTS.md`。
 
 交接直接列出相关目标与成果、适用决定、正式尝试的结局与原因、阶段和在途操作。它每次从 Git 正式状态计算，不维护已读状态；新身份或失去上下文的同一身份都会再次得到必要内容。`status.head` 与 `handoff.currentHead` 来自同一快照。`snapshot` / `handoff.inputSnapshot.head` 则固定为领包时的输入，后来的变化不会替换包内源码或规格。
 
@@ -113,7 +117,7 @@ codex --version
 | `explore` | `exploration.json`，最后写 `report.md` | 先 `prepare`，再按预算运行实验，最后 `conclude`；探索本身不关闭产品目标。 |
 | `requestDecision` | `question.json` | `submit` 保存问题，`ask_user` 走独立用户通道；答复持久化后返回原任务。 |
 
-`Spec.lean` 是定义，`Goal.lean` 列出实际要求的定理名字与类型，`claims.json` 标出本节点负责的条款。每个包的 `ACTION.md` 提供本动作的文件格式和可直接照写的模板。`search` 可找到尚未导出的资料，`view_add` 导出所选资源；`node/` 材料来自固定输入快照，`current/` 提供交接所引用的当前正式历史、证据和报告，继续受相同访问规则约束。必要上下文不可见时，交接明确报告 `blockedByMissingContext`，不能当作完整输入继续依赖它。
+`Spec.lean` 是定义，`Goal.lean` 列出实际要求的定理名字与类型；工具响应和 `.axiward/view.json` 的 `claims` 字段标出本包固定输入中的条款编号，无权访问时为 `null`。`AGENTS.md` 和每次返回的 `actionInstructions` 提供当前动作的文件格式与模板。`search` 可找到尚未导出的资料，`view_add` 将所选资源导出到 `.axiward/materials/`；`node/` 材料来自固定输入快照，`current/` 提供交接所引用的当前正式历史、证据和报告，继续受相同访问规则约束。必要上下文不可见时，交接明确报告 `blockedByMissingContext`，不能当作完整输入继续依赖它。
 
 资料导出针对控制器已登记的资源目录，当前不是按任意仓库路径签出文件的接口。Worker 无需读取完整仓库。
 
@@ -131,7 +135,7 @@ codex --version
 
 R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean 验证器检查一个不可变候选。候选写到 `trials/<名称>/Queue.lean`、`Proofs.lean`，由 `experiment` 发起。预算是 **0–8 次**；0 次适合纯分析。准入只允许生成观测与建议，不允许实验改写正式源码、根规格或成果。
 
-实验先登记准确输入，再由 Codex 原生 `command/exec` 执行，完整记录交给控制端。`evidence.json` 保存原始记录；`report.md` 保存 agent 的解释。两者不会混成证明。
+实验先登记准确输入，再由 Codex 原生 `command/exec` 执行，完整记录交给控制端。原始记录按需通过 `evidence` 导出到 `.axiward/evidence.json`；`report.md` 保存 agent 的解释。两者不会混成证明。
 
 外部调研仍可使用原生工具；引用和架构建议可以写进报告，供后续 worker 参考。它们不会自动成为受信事实。首版没有任意 shell 实验、通用网站观测或多语言验证器的接入。
 
@@ -201,7 +205,7 @@ R0 的已建模项目实验是：在隔离的构建目录，用登记的 Lean �
 
 源码和证明以包领取时的 `source/` 为固定基准。后交付包与最新源码三方合并，并核验新成果和当前全部已接纳保证。内容冲突或核验失败结束本包、保留原稿与原因，新包从最新源码继续；正式源码及已有成果保持不变。核验期间发生提交竞争则保留封存包，重试时重新合并核验。
 
-候选初始文件从固定基线填充，也遵守材料访问拒绝；`blockedSourceFiles` 列出未导出的文件。访问恢复后通过 `sourceResource` 取得该包的固定源码，不直接访问正式仓库。
+候选只在首次领取时从固定基线填充，也遵守材料访问拒绝；恢复和查询不覆盖草稿，也不会补回用户已删除的候选。每次响应的 `blockedSourceFiles` 列出当前无权导出的基线文件。访问恢复后通过 `sourceResource` 取得该包的固定源码，不直接访问正式仓库；删除本地 `.axiward/view.json` 不会改变正式状态或触发重新填充。
 
 ## 完成与交付
 
