@@ -46,7 +46,9 @@ flowchart TD
 | 标为 worker 的请求不能作为用户答复或 harness 观测 | G1、T10、T13 | `worker_cannot_answer`、`worker_cannot_forge_observation`；身份由调用入口提供，完全访问模式下不证明无法绕行 |
 | 取消保留过程义务，迟到观测不改变活动包 | T10、T15 | `cancel_preserves_obligations`、`late_observation_never_revives` |
 | 暂停禁止新的工作包 | T16 | `pause_blocks_new_package` |
-| 实验发起前必须有登记的准入方案 | T8、T9 | `launch_requires_admitted_plan` |
+| 实验发起前必须有登记的准入方案，每次占用一个预算额度且不超限 | T8、T9 | `launch_requires_admitted_plan`、`launch_within_budget` |
+| 适用用户答复绑定活动包、当前有效范围与已登记选项 | T13 | `applicable_answer_binding` |
+| 完全相同的请求重放返回原结果，不改变状态或追加事件 | P3 | `replay_preserves_state` |
 | 完成声明需要根证明及已结清的在途操作 | T18 | `complete_requires_proof_and_settlement` |
 | 旧包不能凭旧核验发布到新版本 | T17 | `changed_scope_rejects` |
 | 新建或复用节点均不能引入循环 | T6 | `route_rank_decreases`、`reachable_decreases`、`graph_acyclic` |
@@ -129,55 +131,26 @@ axiward cancel <仓库> <请求ID> <执行者ID> <包编号> <原因> [节点编
 
 ## 验证与边界
 
-每项检查含准备不超过 30 秒，超时属于失败，不能计为性能达标。下表按实际执行阶段保留观测，并非最终源码 HEAD 的全量复验清单。`46阶段` 指形成 `46d022f` 的共享源码/诊断实现工作树；`00阶段` 指形成 `00bae01` 的依赖预检工作树；`布局阶段` 指形成 `e2338c3` 的目录内收工作树。两项内核短审计实际执行于 `e2338c3` 的最终编译树，此后仅更新文档；布局阶段没有重跑标为前两个阶段的检查。证据保留于 `.work/`，不入 Git、不自动清理。
+每项仓库检查包含准备过程必须不超过 30 秒；超时不计通过。下表列出包工作区版本实际复核的范围，不能推成整个项目已完成全量验证。运行证据留在忽略的 `.work/`，发行物以 `release.json` 绑定源码提交及文件摘要。
 
-| 检查 | 实际边界 | 秒 | 执行阶段 |
-| --- | --- | ---: | --- |
-| `Tests/Audit.lean` | 当前布局编译树的 2166 个内核声明审计，无 sorry 或额外公理。 | 5.752 | 布局阶段 |
-| `leanchecker Axiward` | 独立重放当前布局编译树的证明。 | 4.156 | 布局阶段 |
-| `store_scenarios` | 真实 Git CAS、幂等、源码/产物绑定、封存恢复、篡改拒绝。 | 19.768 | 46阶段 |
-| `workflow_scenarios` | 交接作用域、未受影响包和混合历史序列化；状态样例不是通用证明。 | 0.077 | 46阶段 |
-| `integration.py --case accepted` | 项目内 `.checks/` 的实际 Lean 构建、审计、证明重放、输入绑定、接纳、默认根内交付并运行。 | 25.015 | 布局阶段 |
-| `integration.py --case wrong-fifo` | 新启动器实际拒绝错误证明，保持原始诊断中的 ⊢、α 及错误阶段。 | 11.796 | 布局阶段 |
-| `layout.py` 四动作 | execute/refine/explore/requestDecision 各独立检查包根文件、真实封存字节及元数据排除；核验调用明确截断，不提供模拟 passed。 | 17.125 / 17.141 / 15.469 / 15.484 | 布局阶段 |
-| `layout.py --case delivery` | 默认根内交付、实际输出路径、不覆盖、拒绝外部/保留路径；使用已接纳的 Git 夹具，不重复数学核验。 | 3.844 | 布局阶段 |
-| `workflow.py --case intent` | 扁平包根 trials 路径的真实适配器/Git 意图重放，受控协议输入，不重新派发操作。 | 14.891 | 布局阶段 |
-| `integration.py --case merged` | 真实三方合并与联合数学核验，双方源码保留、旧凭据更新、未完成条款不加入。前置已接纳记录为夹具。 | 27.500 | 46阶段 |
-| `integration.py --case merge-breaks-prior` | B 的新目标之外，删除 A 的已接纳保证会被实际 Lean 拒绝；旧源码/成果不变。前置记录为夹具。 | 15.594 | 46阶段 |
-| `integration.py --case assembled` | 夹具提供子成果，生产控制器实际核验共享源码的父目标并运行交付物。 | 25.359 | 46阶段 |
-| `integration.py --case merge-conflict` | 真实 Git 内容冲突，结束包并保留原稿；不运行数学核验。 | 11.829 | 46阶段 |
-| `integration.py --case merge-race` | 真实 Git/CAS 拒绝旧 HEAD 的结果并保留封存包；结果本身为协议夹具。 | 13.641 | 46阶段 |
-| `workflow.py --case route` | 路线失效报告保留共享节点，真实 CLI 回收指定包；状态证明值为夹具。 | 6.047 | 46阶段 |
-| 独立发行目录布局验收 | 脱离源码及 Lean/Python 环境的 exe 启动、两套策略初始化、session、真实适配器 stdio 的 status/next/cancel；没有原生 Codex 路由或模型轮次。 | 17.297 | e2338c3发行物 |
-| `diagnostic_handoff.py --case acquisition` | 新包直接收到真实失败诊断；原稿与实际合并源码区分正确，完整原始证据可读。 | 13.063 | 46阶段 |
-| `diagnostic_handoff.py` 访问拒绝 | evidence/history/candidate/previous-file/initial-source 各独立调用；current 别名无旁路、首次源码填充不绕过拒绝、恢复后仍读取固定基线。 | 14.344 / 14.453 / 12.328 / 11.890 / 12.297 | 46阶段 |
-| `runtime_dependency.py --case preflight` | 子进程 PATH 缺 Codex 时，初始化/session/新包/新封存均提前拒绝；已登记 begin/submit 重放、next 恢复和请求冲突检查保持原语义。 | 20.422 | 00阶段 |
-| `runtime_dependency.py --case late` | 封存后入口消失，真实 CLI 返回具体 Codex/PATH 原因并存入证据；未启动核验阶段，旧包按 unresolved 结束。 | 17.609 | 00阶段 |
-| `Tests/Diagnostics.lean` | 真实 Git 证据中的完整诊断、实际合并输入、位置、目标/前提及缺失信息；消息为协议夹具。 | 3.487 | 46阶段 |
+| 已复核边界 | 实际依据与限制 |
+| --- | --- |
+| 编译与内核 | `lake build axiward verifier_boundary`、`Tests/Audit.lean` 的 2166 个声明审计和 `leanchecker Axiward` 通过；无 `sorry` 或额外公理。 |
+| 四动作包布局 | `Tests/layout.py` 的 execute/refine/explore/requestDecision 使用真实 CLI、适配器和 Git 封存；检查包根、元数据路径及白名单。核验派发截断为 `verificationNotRun`，没有运行数学核验。 |
+| 只读状态 | `Tests/status_snapshot.py` 在真实暂停提交之间查询，核对同快照状态与交接、完整项目地图和动作路径、包文件字节与 mtime 不变，以及条款拒绝时的 `null`。 |
+| 合并后的旧保证 | `Tests/integration.py --case merge-breaks-prior` 用真实 Lean 拒绝删除已接纳保证的候选；前置接纳记录是协议夹具。 |
+| 失败交接与恢复 | `Tests/diagnostic_handoff.py` 的 initial-source、acquisition、evidence 从保留的真实失败读取诊断；核对访问拒绝、损坏或删除 view 不影响正式查询、草稿保留及已删候选不复活，不重跑核验。 |
+| 独立发行入口 | 文件摘要、脱离源码目录的 exe 启动、两套策略初始化、session 和真实适配器 stdio 的领包/取消/显式 evidence；未经过原生 Codex MCP 路由，也无模型轮次。 |
+| FIFO 实际交付 | 复用已有满时拒绝示例，通过打包适配器提交，真实 Lean 构建、审计、证明重放后默认导出根内 `delivery/` 并运行；正常包没有导出完整 evidence。这不证明模型能自主开发候选。 |
 
-本轮包工作区整理另做以下独立复核；上表仍是各自旧阶段的观测，不代表本轮全部重跑。以下检查均含各自准备过程、单次小于 30 秒，无模型推理：
+其他检查入口分别负责 Git 存储与 CAS（`store_scenarios`）、工作流和路线（`workflow_scenarios`、`Tests/workflow.py`）、合并/冲突/竞争（`Tests/integration.py` 其他 case）、Codex 依赖失败（`Tests/runtime_dependency.py`）与原生 MCP 接入（`Tests/native.py`）。这些入口没有在最近的包工作区版本上全部重跑；旧版本通过记录不能替代当前验收。
 
-| 检查 | 实际边界 | 秒 |
-| --- | --- | ---: |
-| 编译、内核审计与证明重放 | `lake build axiward verifier_boundary`；`Tests/Audit.lean` 审计 2166 个声明，无 `sorry` 或额外公理；`leanchecker Axiward` 独立重放。 | 19.687 / 4.500 / 5.047 |
-| `layout.py` 四动作 | execute/refine/explore/requestDecision 的真实 CLI、适配器和 Git 封存 IO；根目录、包内元数据路径及封存白名单正确。check 派发明确截断为 `verificationNotRun`，不冒充数学核验。 | 16.812 / 15.469 / 15.610 / 15.390 |
-| `status_snapshot.py` | 已绑定包的只读查询与真实暂停交错；状态和交接同快照，项目地图、动作、路径完整，包文件字节与 mtime 不变；拒绝访问条款时返回 `null`。 | 19.156 |
-| `integration.py --case merge-breaks-prior` | 真实 Lean 拒绝破坏旧保证的合并候选，保留原始诊断；前置已接纳状态是明确的协议夹具。 | 18.953 |
-| `diagnostic_handoff.py` 的 initial-source / acquisition / evidence | 从本轮真实失败只读恢复完整诊断；损坏或删除本地 view 不改变正式查询，恢复保留草稿且不复活已删候选，源码及证据访问拒绝仍生效。各 case 新建受管测试项目，不重跑核验；完整证据只在显式请求时导出。 | 25.016 / 15.875 / 20.187 |
-
-`merged` 首跑被 28 秒保护终止，不计通过；保留核验全部阶段后减少重复规格摘要生成，第二次才通过。不可变诊断投影另在 `merge-breaks-prior` 的真实失败上只读核对，1.467 秒：实际合并候选不同于原稿，读取 `Gate.lean:12:48` 的缺失定理诊断，HEAD 不变且未重跑核验。新包完整交接和访问拒绝的六个独立边界均由 `Tests/diagnostic_handoff.py` 验证，包含 Git clone、session 和 next；原失败项目 HEAD 不变，未生成新的核验目录。可先运行 `integration.py --case merge-breaks-prior`，再用 `python Tests/diagnostic_handoff.py --repo <该检查输出>/project --output <新目录> --case acquisition`；其他 case 为 evidence、history、candidate、previous-file、initial-source。纯诊断投影入口是 `lake env lean --run Tests/Diagnostics.lean <新目录>`。
-
-Codex 依赖检查仅运行 `codex --version`，确认当前进程能启动该入口；不安装或发现其他位置的 CLI，不写全局环境，不替代实际核验。`Sandbox` 在真正启动外部进程时也保留具体错误。缺失入口的检查只改变新建 `.work/` 项目的子进程环境，未操作用户正在使用的项目。
-
-目录内收的正常核验曾遇父 deny 继承和 PowerShell cwd 降级，相关失败以及两次 28 秒超时均不计通过。最终方案只对新空 snapshot 设置精确 ACL，并直接绑定核验子进程 cwd；完整 profile、核验阶段和输入绑定检查保留，详见[核验进程边界](permissions.md#候选核验进程)。移除了 check 入口重复加载同一状态，以及 accepted 边界中已由实际 deliver 执行的重复完整加载；没有删去交付运行和绑定断言。新检查证据在 `.work/nested-checks-*`、`.work/root-layout-*`，不自动清理。
+协议夹具中的 `passed` 只建立可控状态，不证明候选正确；模拟用户答复也不是实际产品批准。`codex --version` 只确认启动入口，不能替代真实核验。需要诊断读取检查时，先生成 `merge-breaks-prior` 的真实失败，再向 `diagnostic_handoff.py --repo <失败项目> --output <新目录> --case <case>` 提供该项目。
 
 ### 证明和外部边界
 
-- `Proofs.lean`、`Workflow.lean`、`Engine.lean` 的定理针对实际纯转换。新增复核定理说明成功通过复核守卫时，凭据集合覆盖控制器当前路线的全部已接纳成果，并逐项绑定范围与合并候选；它们不证明 Git 合并或外部 Lean 进程的实现正确。
-- `accepted_binding` 对应基础 `finish` 的原候选绑定；新合入还依赖 `integrateNode`、实际联合 gate 核验与精确 HEAD 的 CAS。不能拿基础定理冒充全部合入路径的端到端证明。
-- 前置协议 `passed` 只建立可控状态，不证明候选正确性。真实数学检查与真实 Git/进程/入口检查分别报告，失败现场提取始终只读既有证据。
-- 检查分层 checkpoint `34ee404` 已补 `launch_within_budget`、`applicable_answer_binding`、`replay_preserves_state` 并删除重复纯状态样例。它不是检查重整全部完成的凭据：旧 handoff 检查最后超时，原生 MCP 的最终树复验和旧覆盖审计仍有缺口。旧 Parts 拼装相关覆盖已随拼装器删除；满时覆盖策略的实际可执行交付和所有在途操作阻止发布的完整性质，不能由本轮的原策略结果或仅有 `complete` 定理替代。
+`Proofs.lean`、`Workflow.lean`、`Engine.lean` 的定理针对实际纯转换。复核定理要求凭据覆盖当前路线的全部已接纳成果，并逐项绑定范围与合并候选；它们不证明 Git 合并或外部 Lean 进程的实现正确。`accepted_binding` 只对应基础 `finish` 的原候选绑定，共享合入还依赖 `integrateNode`、联合 gate 核验和精确 HEAD 的 CAS。
 
-`rootClosed` 是当前根的有效证明，`complete` 仍要求当前路线无活动包及所有已登记在途操作结清；旧路线 worker 的停止或回收不另加等待。Axiward 只报告失效包，Discussion agent 管理 Codex worker，`reclaim` 只释放包占用并保留操作义务。
+`rootClosed` 表示当前根有有效证明；`complete` 还要求当前路线无活动包及所有已登记在途操作结清。现有完成定理不能代替“所有在途操作都阻止发布”的完整性质验证。满时覆盖规格的真实可执行交付、handoff 检查的 30 秒内验收、当前源码的原生 MCP 复验及剩余覆盖审计仍未完成；真实模型持续推进和用户最终验收也未完成。统一现状见[项目状态](roadmap.md)。
 
-Git、CLI/适配器、完整 Lean 发行版、Codex 原生执行通道与操作系统仍是外部信任前提。当前固定 FIFO 规格族不代表任意软件验证；worker 完全访问模式依靠说明约定，权限隔离检查按用户要求跳过。
+Git、CLI/适配器、完整 Lean 发行版、Codex 原生执行通道与操作系统仍是信任前提。当前验证器只支持固定 FIFO 规格族；完全访问 worker 依靠说明约定，权限隔离检查按用户要求跳过。候选核验进程的具体限制与启动协调见[执行模式](permissions.md#候选核验进程)。

@@ -21,7 +21,7 @@
 
 PowerShell 的路径提供器在父目录拒绝下可能把初始目录退到盘根。启动器通过 .NET `ProcessStartInfo.WorkingDirectory` 直接绑定 Lake 的 snapshot cwd；三阶段使用同一实际目录，stdout/stderr 明确按 UTF-8 完整转发，退出码保持。没有为适配错误 cwd 修改 Audit 或其他规范文件。以上 ACL 和进程调用属于实现依赖与外部信任边界，正常核验通过不等于权限隔离性质的完整证明。
 
-同项目核验使用文件锁排队。共享 Codex 环境的 Axiward 核验调用在受限子进程就绪后释放启动锁，不同项目的核验主体可以并行。已知 SID 注册问题及适配方案见[故障说明](../experiments/windows-sandbox-concurrency.md)。
+本机 Codex CLI `0.155.0-alpha.9` 的 Windows elevated 沙箱曾在同一用户环境首次并发注册路径时出现共享 SID 缓存与目录 ACL 不一致，使已授权构建写入被拒绝。Axiward 按同一 `CODEX_HOME` 共用启动锁，直到受限子进程发出就绪信号才释放；同项目核验仍用项目锁排队，不同项目的核验主体可以并行。该协调只约束 Axiward 发起的核验，其他独立 Codex 进程不自动遵守，也不表示已修复 Codex 的共享缓存缺陷；不能把本机观测推广到所有 Codex 或 Windows 版本。
 
 ## 当前检查范围
 
