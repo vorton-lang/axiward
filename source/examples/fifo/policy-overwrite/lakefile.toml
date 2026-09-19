@@ -1,0 +1,10 @@
+name = "fifo-example"
+version = "0.0.0"
+defaultTargets = ["Axiward.Proofs", "fifo_demo"]
+
+[[lean_lib]]
+name = "Axiward"
+
+[[lean_exe]]
+name = "fifo_demo"
+root = "Main"

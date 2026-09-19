@@ -2,3 +2,4 @@
 __pycache__/
 .work/
 /lake-manifest.json
+/source/lake-manifest.json

@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "name": "successor",
+  "version": "1",
+  "specificationPath": "Specification.lean",
+  "files": [
+    "Specification.lean",
+    "Main.lean",
+    "lakefile.toml",
+    "lean-toolchain"
+  ],
+  "specificationModules": [
+    "Specification"
+  ],
+  "candidateFiles": [
+    {
+      "source": "Implementation.lean",
+      "target": "Implementation.lean"
+    },
+    {
+      "source": "Proof.lean",
+      "target": "Proof.lean"
+    }
+  ],
+  "buildTargets": [
+    "Proof",
+    "successor_demo"
+  ],
+  "proofModules": [
+    "Proof"
+  ],
+  "artifacts": [
+    ".lake/build/bin/successor_demo.exe"
+  ],
+  "claims": [
+    {
+      "id": "successor",
+      "proposition": "Successor.Required",
+      "arguments": [
+        "Implementation.next"
+      ],
+      "proof": "implementation_correct"
+    },
+    {
+      "id": "positive",
+      "proposition": "Successor.Positive",
+      "arguments": [
+        "Implementation.next"
+      ],
+      "proof": "implementation_positive"
+    }
+  ]
+}

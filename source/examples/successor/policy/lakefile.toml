@@ -1,0 +1,16 @@
+name = "successor-example"
+version = "0.0.0"
+defaultTargets = ["Proof", "successor_demo"]
+
+[[lean_lib]]
+name = "Specification"
+
+[[lean_lib]]
+name = "Implementation"
+
+[[lean_lib]]
+name = "Proof"
+
+[[lean_exe]]
+name = "successor_demo"
+root = "Main"

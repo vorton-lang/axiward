@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "name": "fifo",
+  "version": "reject-1",
+  "specificationPath": "Axiward/Spec.lean",
+  "files": [
+    "Axiward/Spec.lean",
+    "Main.lean",
+    "lakefile.toml",
+    "lean-toolchain"
+  ],
+  "specificationModules": [
+    "Axiward.Spec"
+  ],
+  "candidateFiles": [
+    {
+      "source": "Queue.lean",
+      "target": "Axiward/Queue.lean"
+    },
+    {
+      "source": "Proofs.lean",
+      "target": "Axiward/Proofs.lean"
+    }
+  ],
+  "buildTargets": [
+    "Axiward.Proofs",
+    "fifo_demo"
+  ],
+  "proofModules": [
+    "Axiward.Proofs"
+  ],
+  "artifacts": [
+    ".lake/build/bin/fifo_demo.exe"
+  ],
+  "claims": [
+    {
+      "id": "created",
+      "proposition": "Axiward.Q0.Created",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.created"
+    },
+    {
+      "id": "enqueue-room",
+      "proposition": "Axiward.Q0.EnqueueRoom",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.enqueue_room"
+    },
+    {
+      "id": "enqueue-full",
+      "proposition": "Axiward.Q0.EnqueueFull",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.enqueue_full"
+    },
+    {
+      "id": "dequeue-some",
+      "proposition": "Axiward.Q0.DequeueSome",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.dequeue_some"
+    },
+    {
+      "id": "dequeue-empty",
+      "proposition": "Axiward.Q0.DequeueEmpty",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.dequeue_empty"
+    },
+    {
+      "id": "measured",
+      "proposition": "Axiward.Q0.Measured",
+      "arguments": [
+        "Axiward.subject"
+      ],
+      "proof": "Axiward.measured"
+    }
+  ]
+}
